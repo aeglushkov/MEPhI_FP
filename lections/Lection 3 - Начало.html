@@ -1,0 +1,462 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 3 - Начало</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><section><h4>Haskell</h4><ul><li>Лаконичность (краткость и простота)</li><li>Строгая типизация</li><li>Модульность</li><li>Функции — объекты первого порядка (значения)</li><li>Отсутствие побочных эффектов</li><li>Ленивые вычисления</li></ul></section><section><h4>Лаконичность</h4><p>Программы на функциональных языках обычно намного короче и проще, чем те же самые программы на императивных языках.</p></section><section><h4>Лаконичность</h4><p>Синтетический пример (JS)</p><table><tr><td><pre style="font-size: 0.4em; width: 100%"><code class="js">var m = [1,2,10,3], n = [];
+for (var i = 0; i < m.length; i++) {
+  if (m[i] % 2 !== 0) {
+    n.push(m[i] * 2);
+  }
+}
+var a;
+if (m.length > 1) {
+  a = n[0];
+  for (i = 1; i < n.length; i++) {
+    if (n[i] > a) {
+      a = n[i];
+    }
+  }
+} else {
+  a = n[0] || -Infinity;
+}
+a;</code></pre></td><td><pre style="font-size: 0.4em; width: 100%"><code class="js">Math.max(
+  ...[1,2,10,3]
+    .filter(a => a % 2)
+    .map(a => a * 2)
+)
+</code></pre></td></tr></table></section><section><h4>Лаконичность</h4><p>quicksort C++</p><pre style="font-size: 0.4em; width: 100%"><code class="cpp">public static void qs(int[] A, int low, int high) {
+  int i = low;
+  int j = high;
+  int x = A[(low+high)/2];
+  do {
+      while(A[i] < x) ++i;
+      while(A[j] > x) --j;
+      if(i <= j){
+          int temp = A[i];
+          A[i] = A[j];
+          A[j] = temp;
+          i++; j--;
+      }
+  } while(i <= j);
+
+  if(low < j) qs(A, low, j);
+  if(i < high) qs(A, i, high);
+}
+</code></pre></section><section><h4>Лаконичность</h4><p>quicksort haskell</p><pre><code class="hs">qs [] = []
+qs (x:xs) = (qs l) ++ [x] ++ (qs r)
+  where (l,r) = partition (&lt;x) xs
+</code></pre></section><section> <h4>Типизация</h4><p>Система типов — это гибко управляемый синтаксический метод доказательства отсутствия в программе определенных видов поведения при помощи классификации выражений языка по разновидностям вычисляемых ими значений. </p><p>Они (системы типов) принадлежат классу формальных методов, которые предлагаются современными технологиями программного обеспечения и помогают убедиться, что система ведет себя в соответствии с некоторой спецификацией ее поведения, явной или неявной.</p></section><section><h4>Типизация</h4><p>Haskell - язык со строгой типизацией. В нем отсутсвует понятие приведения типов. Для того чтобы преобразовать значение какого-либо типа в значение другого типа, нужно написать функцию, которая строит значение требуемого типа на основе значения исходного типа. Т.е. выполнить явно преобразование значения из одного в типа в другой.</p></section><section> <h4>Типизация. Полиморфизм.</h4><p>Однако, в Haskell имеется параметрический полиморфизм, при котором значения разных типов, могут обрабатываться некотрым единым способом.</p><p>Наряду с параметрическим полморфизмом, также доступен и специальный тип полиморфизма (ad-hoc), которые даёт возможности для перегрузки функций.</p></section><section><h4>Типизация. Вывод типов.</h4><p>Несмотря на то, что Haskell является типизированным языком, большинство аннотаций типов в Haskell могут быть опущены, а компилятор сам выведен наиболее общие типы.</p></section><section> <h4>Модульность</h4><p>Механизм модульности позволяет разделять программы на несколько сравнительно независимых частей (модулей) с чётко определёнными связями между ними. Тем самым облегчается процесс проектирования и последующей поддержки больших программных систем. Поддержка модульности не является свойством именно функциональных языков программирования, однако поддерживается большинством таких языков.</p></section><section><h4>Модульность</h4><p>Программа на языке Haskell состоит из модулей (module). Каждый модуль помещается в свой файл. Имя модуля совпадает с именем файла и начинается с большой буквы. Файл модуля имеет расширение .hs, например <b style="color:lightgrey">FirstModule.hs.</b></p></section><section> <h4>Модульность</h4><p>Структура модуля</p><pre><code class="haskell">module Имя(определение1, определение2,..., определениеN) where
+import Модуль1(...)
+import Модуль2(...)
+...
+
+-- определения
+определение1
+определение2
+...
+</code></pre></section><section><h4>Функции - значения</h4><p>В функциональных языках (равно как и вообще в языках программирования и математике) функции могут быть переданы другим функциям в качестве аргумента или возвращены в качестве результата. Функции, принимающие функциональные аргументы, либо возврвщающие функции как значения, называются функциями высших порядков или функционалами.</p></section></section><section><h4>Синтаксис. Числа.</h4><pre><code class="haskell">> 2 + 2
+4
+
+> 6 / 5
+1.2
+
+> 6 / -5
+Precedence parsing error
+  cannot mix `/' [infixl 7] and prefix `-' [infixl 6]
+  in the same infix expression
+> 6 / (-5)
+-1.2
+</code></pre></section><section><h4>Синтаксис. Булеан.</h4><pre><code class="haskell">> True || False
+True
+
+> True && False
+False
+
+> not False
+True
+
+> 2 * 2 == 4
+True
+
+> 2 * 2 /= 5
+True</code><code class="haskell fragment">> 2 == "два"	?
+</code></pre></section><section><h4>Haskell строго типизированный язык</h4><pre><code><interactive>:56:1:
+No instance for (Num [Char])
+  arising from the literal `2'
+Possible fix: add an instance declaration for (Num [Char])
+In the first argument of `(==)', namely `2'
+In the expression: 2 == "sad"
+In an equation for `it': it = 2 == "sad"
+</code></pre></section><section><h4>Типы (:set +t)</h4><p>Всегда с большой буквы</p><ul><li>Integer, Int</li><li>Float, Double</li><li>Bool (True, False) (алгебраический тип)</li><li>Char</li></ul></section><section><h4>Типы (:set +t)</h4><pre><code class="haskell">> :set +t
+> 42
+42 it :: Integer
+
+> 3.1415
+> True
+
+> :t 42
+42 :: Num a => a
+  (параметрический, специальный (ad hoc) полиморфизм)
+
+42 + 1.2
+it :: Double
+
+> :t 42 + 8.2
+42 + 8.2 :: Fractional a => a
+</code></pre></section><section><h4>Функции</h4><pre><code class="haskell">> succ 9
+10
+> max 2.5 5.6
+5.6
+> 2 + max 2.5 5.6 + min 3.4 (succ 4)
+11.0
+> 2 + (max 2.5 5.6) + (min 3.4 (succ 4))
+
+Ассоциативность слева, справа
+
+2 ** 2 ** 3 / (2 ** 2) ** 3/  2 ** (2 ** 3)
+2 - 2 – 2  ?
+</code></pre></section><section><h4>Функции</h4><p>Напишите выражение, высчитывающее минимальное число среди 10, 2, 5, -1, 99</p></section><section><h4>Функции. Пример: факториал</h4><p>lab1.hs</p><pre><code class="haskell">fac 0 = 1
+fac n = n * fac (n-1)</code></pre><p>console</p><pre><code class="haskell">> ghci
+> :load ~lab1.hs
+> fac 6
+720
+> let a = 20
+> fac a
+2432902008176640000
+</code></pre></section><section><h4>Некоторые выводы</h4><ul><li>Математичность</li><!-- Определение функции похоже на математическое определение факториала--><li class="fragment">Рассуждение (формальное исследование свойств программ)</li><!-- Рассуждение о программах: доказательство корректности, …--><li class="fragment">Рекурсия</li><li class="fragment">Эффективность рекурсии</li><!-- При умелом программировании не ведет к падению эффективности (компилятор сводит к итерации)--><li class="fragment">Отсутствует оператор присваивания</li><!-- Определения функций, (=) имеет другую семантику – связывание имен--><!-- Будучи один раз связанным, имя не может менять свое значение (в рамках области видимости)--><!-- Следствие: нет побочных эффектов--></ul></section><section><h4>Простые функции. Определение и применение функций.</h4><pre><code class="haskell">succ' n = n + 1
+
+> succ' 9
+10
+
+square x = x * x
+
+> square 4
+16
+
+squareIfLess5 x = if x < 5 then square x else x
+
+> squareIfLess5 3
+9
+> squareIfLess5 7
+7
+</code></pre></section><section><h4>Тип данных строки</h4><p>Строка – это список символов</p><pre><code class="hs">> "Марьванна"
+"Марьванна"
+it :: [Char]</code><code class="hs fragment">> 'М':"арьванна"
+> ['М','а','р','ь','в','а','н','н','а']
+-- про списки ниже!</code><code class="hs fragment">hello s = "Hello, " ++ s ++ "!"
+> hello "Марьванна"
+"Hello, \1052\1072\1088\1100\1074\1072\1085\1085\1072!"
+</code></pre></section><section><h4>Типы функций</h4><pre><code class="hs">> :t hello
+hello :: [Char] -> [Char]</code><code class="hs fragment">> :t fac
+fac :: (Eq a, Num a) => a -> a
+-- ограничение - контекст (классы типов)</code><code class="hs fragment">> :t max
+max :: Ord a => a -> a -> a</code><code class="hs fragment">> :t squareIfLess5
+squareIfLess5 :: (Num a, Ord a) => a -> a
+</code></pre></section><section><h4>Операторы. Префикс, суффикс, инфикс</h4><pre><code class="hs">(sumWithSquareOf) x y = x + square y
+
+> 3 `sumWithSquareOf` 5
+28
+> (sumWithSquareOf) 3 5
+28</code><code class="hs fragment">import Prelude hiding ((+))
+x + y = x – y
+> 8 + 3
+5</code><code class="hs fragment">> (-) 23 13
+10
+> :t (-)
+(-) :: Num a => a -> a -> a
+</code></pre><p class="fragment">Пригодится для ФВП</p></section><section><h4>Тип данных списки</h4><pre><code class="hs">> let lostNumbers = [4,8,15,16,23,42]
+
+> let cards = [3,7,12]
+
+> let mix = lostNumbers ++ cards
+
+> mix
+[4,8,15,16,23,42,3,7,12]
+
+> let lostNumbers = [13,666,1488]</code><code class="hs fragment">> mix ?</code><code class="hs fragment">[4,8,15,16,23,42,3,7,12]</code><code class="hs fragment">> [1, "Гарри Поттер", 16.5] ?
+</code></pre></section><section><h4>Списки</h4><pre><code class="hs">> []
+it :: [a]
+
+> [1, 13, 666]
+it :: [Integer]
+
+> [[1, 2], [3, 4]]
+it :: [[Integer]]
+
+> [[1, 2], [3, 4]] ++ [[5, 6]]
+it :: [[Integer]]
+
+> [[], []]
+it :: [[a]]</code><code class="hs fragment">> [1, [2,3,4]] ?</code><code class="hs fragment">-- ничего дельного
+</code></pre></section><section><h4>Оператор пары</h4><pre><code class="hs">> 3 : mix
+[3,4,8,15,16,23,42,3,7,12]</code><code class="hs fragment">> [3] : [1, 3, 4]</code><code class="hs fragment">--фигвам</code><code class="hs fragment">> [3] : [[5, 6]]
+it :: [[Integer]]
+
+> mix!!5 –- получение элемента
+42</code><code class="hs fragment">> 13 : [] ?
+</code></pre></section><section><h4>Списки</h4><p>Список – это</p><ul><li>Конструктор списка (пустой список): []</li><li>Набор элементов одного типа</li><li>Оператор пары</li></ul><pre><code class="hs">1 : 2 : 3 : 4 : 5 : []</code></pre><p>Всё остальное – синтаксический сахар</p></section><section><h4>Работа со списками</h4><pre><code class="hs">> head [1..5] -– [1, 2, 3, 4, 5]
+1
+> head []</code><code class="hs fragment">*** Exception: Prelude.head: empty list
+> head [13] ?</code><code class="hs fragment">> tail [1..5]
+[2, 3, 4, 5]
+> last [1..5]
+5
+> init [1..5]
+[1, 2, 3, 4]
+> length [2..6]
+5
+> null [1..5]
+False
+> null []
+True
+</code></pre></section><section><h4>Работа со списками</h4><pre><code class="hs">null' x = if (x=[]) then True else False
+или
+null' [] = True
+null' _ = False
+
+>:t null'
+null :: [a] -> Bool
+
+> take 4 [1..10]
+[1, 2, 3, 4]
+> take 4 [1..]
+[1, 2, 3, 4]
+> [1..] ?
+</code></pre></section><section><h4>Работа со списками</h4><pre><code class="hs">> drop 4 [1..10]
+[5, 6, 7, 8, 9, 10]
+> take 4 (drop 7 "Hello, dude!")
+"dude"
+> drop 666 [1..10]
+[]
+> drop 4 [1..] ?
+
+> minimum [10, 2, 5, -1, 99]
+-1
+> sum [1..10]
+55
+> product [1..10]
+3628800
+-- hmmm
+</code></pre></section><section><h4>Работа со списками</h4><pre><code class="hs">fac n = product [1..n]
+> fac 6
+720
+
+> elem 4 [1..10]
+True
+> elem 666 [1..10]
+False
+> 'o' `elem` "balloooon"
+True
+</code></pre></section><section><h4>Генерация списков</h4><pre><code class="hs">> [1,3..20]
+[1,3,5,7,9,11,13,15,17,19]
+> ['a'..'z']
+"abcdefghijklmnopqrstuvwxyz"
+
+> ['a'..] ?
+> [0.1, 0.3 .. 1]
+[0.1,0.3,0.5,0.7,0.8999999999999999,1.0999999999999999]
+
+> take 11 (cycle "LOL ")
+"LOL LOL LOL"
+
+> take 10 (repeat 5)
+[5,5,5,5,5,5,5,5,5,5]
+> take 10 [5,5..]
+[5,5,5,5,5,5,5,5,5,5]
+</code></pre></section><section><h4>Генерация списков</h4><pre><code class="hs">> replicate 10 5
+[5,5,5,5,5,5,5,5,5,5]
+> let replicate' how what = take how (repeat what)</code><p>let smth = ...</p></pre></section><section><h4>Генерация списков</h4><pre><code class="hs">> [ a*a | a <- [1..10] ]
+[1,4,9,16,25,36,49,64,81,100]
+
+> [ [a,b] | a <- [1..3], b <- [3..7] ]
+[[1,3],[1,4],[1,5],[1,6],[1,7],
+  [2,3],[2,4],[2,5],[2,6],[2,7],
+    [3,3],[3,4],[3,5],[3,6],[3,7]]
+
+> [ [a,b] | a <- [1..3], b <- [3..7], 5 == a + b ]
+[[1,4],[2,3]]
+boomBangs xs =
+  [ if x < 10 then "BOOM!" else "BANG!" | x <- xs, odd x]
+> boomBangs [7..13]
+["BOOM!","BOOM!","BANG!","BANG!"]
+</code></pre></section><section><h4>Списки. Лень</h4><pre><code class="js">for (let a = [], i = 0; i < 100000000000; i++) {
+  a.push(i);
+}</code></pre><pre><code class="hs fragment">> let a = [1..100000000000]
+-- и.. ничего</code><code class="hs fragment">> let z = map (\x -> x * x) a</code><code class="hs fragment">> let b = [ div 10 x | x <- [5,4..0] ]
+> take 5 b ?
+> take 6 b ?
+</code></pre></section><section><h4>Генерация списков</h4><p>Теорема ферма</p><pre><code class="hs">-- списки
+let rightTriangles = [[a,b,c] |
+  c <- [1..9], b <- [1..c], a <- [1..b], a^2 + b^2 == c^2]
+
+-- кортежи
+let rightTriangles = [(a,b,c) |
+  c <- [1..9], b <- [1..c], a <- [1..b], a^2 + b^2 == c^2]
+</code></pre></section><section><h4>Кортежи</h4><pre><code class="hs">> (1,2)
+(1,2)
+> ("Гарри Поттер", 13, 2.5)
+("Гарри Поттер", 13, 2.5)
+> fst (1,2)
+1
+> snd (1,2)
+2
+> fst (1,2,3) ?
+> let (a,b,c) = (1,2,3)
+  -- (сопоставление с образцом, 3с. ниже)
+> b
+2
+> [("Гарри Поттер", 13, 2.5),("Колобок", 1, 55.5)]
+</code></pre></section><section><h4>Синонимы типов</h4><pre><code class="hs">> type String = [Char]
+
+> type Name = String
+> type Person = (Name, Integer, Float)
+> let a = ("ГП", 12, 3.4)::Person
+> :t a
+a :: Person
+> :t [a, ("ГГ", 19, 0.2)]
+[a,("ГГ", 19, 0.2)] :: [Person]
+</code><p>Больше – создание новых типов</p></pre></section><section><h4>Задание</h4><p>Опишите функцию, которая для данного числа n создает список
+из всех попарных сумм чисел от 1 до n.
+( Т.е. [1+1, 1+2, 1+3, ..., 1+n, 2+1, 2+2, ..., n+n]
+  - всего n*n элементов)
+</p></section><section><h4>Функции. Сопоставление с образцом</h4><pre><code class="hs">sayWhat :: Int -> String
+sayWhat 1 = "место встречи изменить нельзя"
+sayWhat 2 = "как обычно"
+sayWhat 3 = "суббота"
+sayWhat 4 = "я ничего не знаю"
+sayWhat 5 = "ненавижу хаскель, заберите меня отсюда"
+
+> sayWhat 3</code><code class="hs fragment">Чего не хватает?</code><code class="hs fragment">Non-exhaustive patterns in function sayWhat
+</code></pre></section><section><h4>Функции. Сопоставление с образцом</h4><pre><code class="hs">sayWhat :: Int -> String  -- кстати, тип можно не писать!
+sayWhat 1 = "место встречи изменить нельзя"
+sayWhat 2 = "как обычно"
+sayWhat 3 = "суббота"
+sayWhat 4 = "я ничего не знаю"
+sayWhat 5 = "ненавижу хаскель, заберите меня отсюда"
+sayWhat _ = "кто здесь?"
+
+> sayWhat 3
+</code></pre></section><section><h4>Функции. Сопоставление с образцом</h4><pre><code class="hs">sayWhat :: Int -> String
+sayWhat 1 = "место встречи изменить нельзя"
+sayWhat 2 = "как обычно"
+sayWhat _ = "кто здесь?"
+sayWhat 3 = "суббота"
+sayWhat 4 = "я ничего не знаю"
+sayWhat 5 = "ненавижу хаскель, заберите меня отсюда"</code><code class="hs fragment">> sayWhat 3
+> sayWhat 1</code><code class="hs fragment">Pattern match(es) are overlapped
+</code></pre></section><section><h4>Сопоставление кортежей</h4><pre><code class="hs">opinion :: (Int, String) -> String
+opinion man =
+  "Я, " ++ snd man ++ " считаю \"" ++
+  sayWhat (fst man) ++ "\""
+-- обратите внимание на скобки
+
+> opinion (5, "Пупкин Васёк")
+
+opinion :: (Int, String) -> String
+opinion (num, name) =
+  "Я, " ++ name ++ " считаю \"" ++ sayWhat num ++ "\""
+</code></pre></section><section><h4>read-show</h4><pre><code class="hs">> show 1
+"1"
+> show (2, "Пупкин Васёк")
+"(2, \"Пупкин Васёк\")"
+
+> read "True" || False
+True
+</code></pre></section><section><h4>Охранные выражения</h4><ul><li>похожи на switch/case</li><li>слоник</li></ul><pre><code class="hs">bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+  | weight / height ^ 2 <= 18.5 =
+    "You're a whale, congratulations! Emo"
+  | weight / height ^ 2 <= 25.0 =
+    "You're a whale, congratulations! Yes!!!"
+  | weight / height ^ 2 <= 30.0 =
+    "You're a whale, congratulations! Normal human"
+  | otherwise =
+    "You're a whale, congratulations!"
+</code></pre></section><section><h4>Охранные выражения</h4><pre><code class="hs">bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+  | bmi <= 18.5 =
+    "You're underweight, you emo, you!"
+  | bmi <= 25.0 =
+    "You're normal. Pffft, I bet you're ugly!"
+  | bmi <= 30.0 =
+    "You're fat! Lose some weight, fatty!"
+  | otherwise =
+    "You're a whale, congratulations!"
+  where bmi = weight / height ^ 2
+</code></pre></section><section><h4>Охранные выражения</h4><pre><code class="hs">bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+  | bmi <= skinny =
+    "You're underweight, you emo, you!"
+  | bmi <= normal =
+    "You're normal.Pffft, I bet you're ugly!"
+  | bmi <= fat =
+    "You're fat! Lose some weight, fatty!"
+  | otherwise =
+    "You're a whale, congratulations!"
+  where
+    bmi = weight / height ^ 2
+    skinny = 18.5
+    normal = 25.0
+    fat = 30.0
+</code></pre></section><section><h4>Охранные выражения</h4><pre><code class="hs">bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+  | bmi <= skinny =
+    "You're underweight, you emo, you!"
+  | bmi <= normal =
+    "You're normal.Pffft, I bet you're ugly!"
+  | bmi <= fat =
+    "You're fat! Lose some weight, fatty!"
+  | otherwise =
+    "You're a whale, congratulations!"
+  where
+    bmi = weight / height ^ 2
+    (skinny, normal, fat) = (18.5, 25.0, 30.0)
+</code></pre></section><section><h4>Композиционный стиль</h4><pre><code class="hs">> [let square x = x * x in (square 5, square 3, square 2)]
+
+> let square x = x * x in map square [5,3,2]
+
+> (let a = 100; b = 200; c = 300 in a*b*c, let foo="Hey "; bar = "there!" in foo ++ bar)
+
+some =
+  let opinion man = "Я, " ++ snd man ++ " считаю \"" ++ sayWhat (fst man) ++ "\""
+      dude = (5, "Пупкин Васёк")
+  in opinion dude
+</code></pre></section><section><h4>case</h4><pre><code class="hs">sayWhat :: Int -> String
+sayWhat pos = "Моё мнение – " ++
+  сase pos of 1 -> "оставить как есть"
+    2 -> "как обычно"
+    3 -> "суббота"
+    4 -> "я ничего не знаю"
+    5 -> "ненавижу хаскель, заберите меня отсюда"
+    _ -> "кто здесь?"</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>
