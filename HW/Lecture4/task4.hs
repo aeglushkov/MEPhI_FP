@@ -10,22 +10,18 @@
 -- Последний пример демонстрирует: недостаточно проверить только, что строка содержит равное количество открывающих и закрывающих скобок.
 
 -- balance :: String → Bool -- функция из строки в логическое значение
-
-balance' :: Int -> String -> Bool
-balance' n [x] 
-    | x == '(' = False 
-    | x == ')' = n == 1
-    | n == 0 = True
-    | otherwise = False
-balance' n (x:xs) 
-    | x == '(' = balance' (n + 1) xs 
-    | x == ')' = if n > 0 then balance' (n - 1) xs else False
-    | otherwise = balance' n xs
-
 balance :: String -> Bool
-balance str = do
-    let n = 0
-    balance' n str
+balance str = let
+    balance' n [x] 
+        | x == '(' = False
+        | x == ')' = n == 1
+        | n == 0 = True
+        | otherwise = False
+    balance' n (x:xs) 
+        | x == '(' = balance' (n + 1) xs 
+        | x == ')' = if n > 0 then balance' (n - 1) xs else False
+        | otherwise = balance' n xs
+    in balance' 0 str
 
 main :: IO ()
 main = do

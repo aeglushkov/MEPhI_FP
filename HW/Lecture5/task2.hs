@@ -1,13 +1,17 @@
 -- Список треугольных чисел
-countTriangle :: Int->[Int]
-countTriangle 1 = [1]
-countTriangle x 
+triangleList :: Int -> [Int]
+triangleList 1 = [1]
+triangleList x 
     | x == 1 = [1]
-    | otherwise = countTriangle (x-1) ++ [x*(x+1) `div` 2]
+    | otherwise = triangleList (x - 1) ++ [x * (x + 1) `div` 2]
 
 -- Список пирамидальных чисел
-countPyr::Int->[Int]
-countPyr x
+pyramidalList :: Int -> [Int]
+pyramidalList x
     | x == 0 = []
-    | otherwise = countPyr (x-1) ++ [sum (countTriangle x)]
+    | otherwise = pyramidalList (x - 1) ++ [sum (triangleList x)]
     
+main :: IO ()
+main = do
+    print(triangleList 5)
+    print(pyramidalList 5)

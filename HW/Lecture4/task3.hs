@@ -9,10 +9,10 @@ reverse' :: [a] -> [a]
 reverse' [x] = [x]
 reverse' (x:xs) = reverse' xs ++ [x]
 
--- main :: IO ()
--- main = do
---     let n = 10
---     print(fib n)
+main :: IO ()
+main = do
+    let n = 10
+    print(fib n)
 
---     let list = [1, 2, 3, 4, 5]
---     print(reverse' list)
+    let list = [1, 2, 3, 4, 5]
+    print(reverse' list)
