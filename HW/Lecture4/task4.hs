@@ -11,30 +11,30 @@
 
 -- balance :: String → Bool -- функция из строки в логическое значение
 
-balance :: Int -> Int -> String -> Bool
-balance left right [x] 
+balance' :: Int -> String -> Bool
+balance' n [x] 
     | x == '(' = False 
-    | x == ')' = left == (right + 1)
-    | left == right = True
+    | x == ')' = n == 1
+    | n == 0 = True
     | otherwise = False
-balance left right (x:xs) 
-    | x == '(' = balance (left + 1) right xs 
-    | (x == ')') && (left >= (right + 1)) = balance left (right + 1) xs
-    | (x == ')') && (left < (right + 1)) = False
-    | otherwise = balance left right xs
+balance' n (x:xs) 
+    | x == '(' = balance' (n + 1) xs 
+    | x == ')' = if n > 0 then balance' (n - 1) xs else False
+    | otherwise = balance' n xs
 
-left :: Int
-left = 0
+balance :: String -> Bool
+balance str = do
+    let n = 0
+    balance' n str
 
-right :: Int
-right = 0
-
+main :: IO ()
 main = do
     let str1 = "(if (zero? x) max (/ 1 x))"
     let str2 = "I told him (that it’s not (yet) done). (But he wasn’t listening)"
     let str3 = ":-)"
     let str4 = "())("
-    print(balance left right str1)
-    print(balance left right str2)
-    print(balance left right str3)
-    print(balance left right str4)
+
+    print(balance str1)
+    print(balance str2)
+    print(balance str3)
+    print(balance str4)
