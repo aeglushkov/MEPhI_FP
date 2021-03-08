@@ -2,6 +2,8 @@
 .vscode
 .vscode/
 .vscode/*
+*.doc
+*.docx
 # !.vscode/settings.json
 # !.vscode/tasks.json
 # !.vscode/launch.json

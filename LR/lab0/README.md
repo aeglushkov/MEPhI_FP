@@ -4,5 +4,7 @@
 ### Задание 2: 
 Вычислить значения:  
 1)	printIt 5  
+![alt text](https://github.com/aeglushkov/MEPhI_FP/tree/main/LR/lab0/img/task2.1.png?raw=true)  
 2)	printIt 20  
+![alt text](https://github.com/aeglushkov/MEPhI_FP/tree/main/LR/lab0/img/task2.2.png?raw=true)  
 3)	printIt 100 (попробовать printItIo 100, медитировать,…,медитировать)
