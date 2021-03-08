@@ -9,11 +9,17 @@ permute' list = let
 
 -- Функция concat, конкатенация списка списков
 -- concat [[1,2],[3,4,5],[6]] = [1,2,3,4,5,6]
-concat' :: [[a]] -> [a]
-concat' = foldr (++) []
+concat1 :: [[a]] -> [a]
+concat1 = foldr (++) []
+
+concat2 :: [[x]] -> [x]
+concat2 [[x]] = [x]
+concat2 (x:xs) = x ++ concat2 xs
 
 main :: IO ()
 main = do
     print(permute' [1, 2, 3])
     print(permute' [1, 2, 1])
-    print(concat' [[1,2], [3,4,5], [6]])
+
+    print(concat1 [[1,2], [3,4,5], [6]])
+    print(concat2 [[1,2], [3,4,5], [6]])
