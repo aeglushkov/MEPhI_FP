@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 7</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><h4>Типы</h4><img src="./img/7-0.jpg"/></section><section><h4>Типы</h4><img src="./img/7-2.jpg"/></section><section><section><h4>Типы в языке Haskell</h4><p>Статический типизированный язык. Каждое выражение имеет связанный с ним тип, который известен во время комплияции.</p><p>На интуитивном уровне <i>тип</i> можно рассматривать как множество значений/выражений.</p></section><section><h4>Системы типов</h4><p>Система типов - это гибко управляемый метод доказательства отсутствия в программе определенных видов поведения при помощи классификации выраженийц языка по разновидностям вычисляемых ими значений.</p><p>(Б. Пирс: Типы в языках программирования)</p></section></section><section><h4>Типы</h4><img src="./img/7-1.png"/></section><section><pre><code class="hs">type Who = String
+type Year = Int
+type Month = Int
+type Day = Int
+type Where = String
+type Date = (Year, Month, Day)
+data Anniversary =
+  Birthday Who Date
+  | Wedding Who Who Date
+  | Death Who Where Date
+  deriving (Show)
+
+> Birthday "someone" (2012, 11, 7)
+Birthday "someone" (2012, 11, 7)
+> let today = Birthday "someone" (2012, 11, 7)
+> today
+Birthday "someone" (2012, 11, 7)
+> :t today
+today :: Anniversary
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">> :t Birthday
+Birthday :: Who -> Date -> Anniversary
+
+> :t Death
+Birthday :: Who -> Where -> Date -> Anniversary
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">kurtCobain :: Anniversary
+kurtCobain = Birthday "Kurt Cobain" (1967, 2, 20)
+
+kurtWedding :: Anniversary
+kurtWedding = Wedding "Kurt Cobain" "Courtney Love" (1990, 1, 12)
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">anniversaries = [
+  kurtCobain,
+  kurtWedding,
+  Death "Kurt Cobain" "at home" 1994 4 5
+]
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">type AnniversaryBook = [Anniversary]
+
+showDate :: Date -> String
+showDate (y, m, d) = show y ++ "." ++ show m ++ "." ++ show d
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">showAnniversary :: Anniversary -> String
+
+showAnniversary (Birthday name date) =
+  name ++ " born " ++ showDate date
+
+showAnniversary (Wedding name1 name2 date) =
+  name1 ++ " married " ++ name2 ++ " on " ++ showDate date
+
+showAnniversary (Death name where' date) =
+  name ++ " dead in " ++ showDate date ++ " " ++ where'
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">who :: Anniversary -> String
+who (Birthday him _) = him
+who (Wedding him _ _) = him
+who (Death him _ _) = him
+
+map who anniversaries
+</code></pre></section><section><h4>Типы</h4><pre><code class="hs">showAnniversaries :: AnniversaryBook -> [String]
+showAnniversaries = map showAnniversary
+
+["Kurt Cobain born 1967-2-20",
+  "Kurt Cobain married Courtney Love on 1990-1-12",
+  "Kurt Cobain dead 1994-4-5"]
+
+1) Kurt Cobain born 1967-2-20
+2) Kurt Cobain married Courtney Love on 1990-1-12
+3) Kurt Cobain dead 1994-4-5
+
+?
+</code></pre></section><section><h4>Неявное наследлвание</h4><pre><code class="hs">> anniversaries
+    No instance for (Show Anniversary)
+      arising from a use of `print'
+    Possible fix: add an instance declaration for (Show Anniversary)
+    In a stmt of an interactive GHCi command: print it
+
+data Anniversary =
+  Birthday String Int Int Int
+  | Wedding String String Int Int Int
+  | Death String Int Int Int
+  deriving (Show)
+</code></pre></section><section><h4>Именованные типы</h4><pre><code class="hs">data Point = Pt {pointx, pointy :: Float}
+
+> let myPoint = Pt {pointx = 42.0, pointy = 13.666} -- json
+
+pointx :: Point -> Float
+pointy :: Point -> Float
+
+absPoint :: Point -> Float
+absPoint p = sqrt (pointx p * pointx p + pointy p * pointy p)
+
+absPoint (Pt {pointx = x, pointy = y}) = sqrt (x*x + y*y)
+</code></pre></section><section><h4>Параметры типов</h4><pre><code class="hs">data Maybe a = Nothing | Just a -- generics
+> Just "str"
+Just "str"
+> :t Just "str"
+Just "str" :: Maybe [Char]
+> Just 42
+Just 42
+> :t Just 42
+Just 42 :: (Num t) => Maybe t
+> :t Nothing
+Nothing :: Maybe a
+> Just 42 :: Maybe Double
+Just 42.0
+> Just 42 : [Nothing] ?
+> Just 42 : [Just "str", Nothing] ?
+</code></pre></section><section><h4>Рекурсивные структуры</h4><pre><code class="hs">data List a = Nil | Cons a (List a) deriving (Show, Read, Eq, Ord)
+
+> 3 `Cons` (4 `Cons` (5 `Cons` Nil))
+Cons 3 (Cons 4 (Cons 5 Nil))
+</code></pre></section><section><h4>Рекурсивные структуры</h4><pre><code class="hs">infixr 5 :-:
+data List a = Nil | a :-: (List a) deriving (Show, Read, Eq, Ord)
+
+> let a = 3 :-: 4 :-: 5 :-: Nil
+> 100 :-: a
+(:-:) 100 ((:-:) 3 ((:-:) 4 ((:-:) 5 Nil)))
+</code></pre></section><section><h4>Рекурсивные структуры</h4><pre><code class="hs">infixr 5  .++
+(.++) :: List a -> List a -> List a
+Nil .++ ys = ys
+(x :-: xs) .++ ys = x :-: (xs .++ ys)
+
+> let a = 3 :-: 4 :-: 5 :-: Nil
+> let b = 6 :-: 7 :-: Nil
+> a .++ b
+(:-:) 3 ((:-:) 4 ((:-:) 5 ((:-:) 6 ((:-:) 7 Nil))))
+</code></pre></section><section><h4>Деревья</h4><img src="./img/7-3.jpg"/></section><section><h4>Деревья</h4><pre><code class="hs">data Tree a =
+    EmptyTree
+    | Node a (Tree a) (Tree a)
+    deriving (Show, Read, Eq)
+</code></pre></section><section><h4>Деревья</h4><pre><code class="hs">singleton :: a -> Tree a
+singleton x = Node x EmptyTree EmptyTree
+
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+treeInsert x (Node a left right)
+    | x == a = Node x left right
+    | x < a  = Node a (treeInsert x left) right
+    | x > a  = Node a left (treeInsert x right)
+</code></pre></section><section><h4>Деревья</h4><pre><code class="hs">list2tree :: (Ord a) => [a] -> Tree a
+list2tree = l2t EmptyTree
+  where
+    l2t acc [] = acc
+    l2t acc (head:tail) = l2t (treeInsert head acc) tail
+
+list2tree [12, 1, 6, 4, 90, 9]
+</code></pre></section><section><h4>tree2list</h4><pre><code class="hs">tree2list :: (Ord a) => Tree a -> [a]
+tree2list EmptyTree = ?
+tree2list (Node val left right) = ?
+</code></pre></section><section><h4>tree2list</h4><pre><code class="hs">tree2list :: (Ord a) => Tree a -> [a]
+tree2list EmptyTree = []
+tree2list (Node val left right) =
+    (tree2list left) ++ (val : tree2list right)
+
+
+treeSort :: (Ord a) => [a] -> [a]
+treeSort = tree2list . list2tree
+
+> treeSort [12, 1, 6, 4, 90, 9]
+</code></pre></section><section><h4>tree2list</h4><pre><code class="hs">tree2list :: (Ord a) => Tree a -> [a]
+tree2list EmptyTree = []
+tree2list (Node val left right) = ?
+
+
+treeSortDesc :: (Ord a) => [a] -> [a]
+treeSortDesc = tree2list . list2tree
+
+> treeSort [12, 1, 6, 4, 90, 9]
+</code></pre></section><section><h4>Рекурсивные структуры</h4><pre><code class="hs">Кол-во вершин дерева (== кол-во чисел в нём)
+
+treeNum :: Tree a -> Int  ?
+</code></pre></section><section><h4>Рекурсивные структуры</h4><pre><code class="hs">treeNum :: Tree a -> Int
+treeNum EmptyTree = 0
+treeNum (Node val left right) = 1 + (treeNum left) + (treeNum right)
+</code></pre></section><section><h4>Википедия (c)</h4><p style="font-size:20pt">Дерево можно кодировать наборами из нулей и единиц.
+Рассмотрим, например, укладку дерева на плоскости.
+Начиная с какой либо вершины, будем двигаться по ребрам дерева, сворачивая в каждой вершине
+на ближайшее справа ребро и поворачивая назад в концевых вершинах дерева.
+Проходя по некоторому ребру, записываем 0 при движении по ребру в первый раз и 1
+при движении по ребру второй раз (в обратном направлении). Если m — число рёбер дерева,
+то через 2m шагов мы вернемся в исходную вершину, пройдя по каждому ребру дважды.
+Полученная при этом последовательность из 0 и 1 (код дерева) длины 2m позволяет однозначно
+восстанавливать не только само дерево D, но и его укладку на плоскости.
+</p></section><section><pre><code class="hs">treeCode :: Tree a -> [Int]
+treeCode EmptyTree = []
+treeCode (Node val left right) =
+    ([0] ++ treeCode left ++ [1]) ++ ([0] ++ treeCode right ++ [1])
+
+>treeCode $ list2tree [8,6,4,1,7,3,5]
+[0,0,0,0,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,1]
+</code></pre></section><section><img src="./img/7-4.png"/><p>[0,0,0,0,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,1]</p></section><section><img src="./img/7-5.png"/><p>[0,0,0,0,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,1]</p></section><section><pre><code class="hs">list2tree [12, 12, 12, 13, 13, 14]
+
+-- Как будет выглядеть дерево?
+</code></pre></section><section><pre><code class="hs">data Tree = ?
+
+singleton :: a -> Tree a
+singleton x = ?
+
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+?
+
+list2tree :: (Ord a) => [a] -> Tree a
+list2tree = ?
+</code></pre></section><section><pre><code class="hs">data Tree a =
+  EmptyTree
+  | Node a Int (Tree a) (Tree a) deriving (Show, Read, Eq)
+
+singleton :: a -> Tree a
+singleton x = Node x 1 EmptyTree EmptyTree
+</code></pre></section><section><pre><code class="hs">treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+treeInsert x (Node a i left right)
+    | x == a = Node x (i+1) left right
+    | x < a  = Node a i (treeInsert x left) right
+    | x > a  = Node a i left (treeInsert x right)
+
+list2tree :: (Ord a) => [a] -> Tree a
+list2tree = l2t EmptyTree
+  where
+    l2t acc [] = acc
+    l2t acc (head:tail) = l2t (treeInsert head acc) tail</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>

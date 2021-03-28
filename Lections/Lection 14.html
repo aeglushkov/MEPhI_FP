@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 14</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><h1>Lens</h1></section><section><h4>Зачем? Пример из ООП</h4><p>project.owner.name = "John"
+</p></section><section><section><h4>Зачем? </h4><p>project.owner.name = "John"</p><p>Можно ли добиться подобной функциональности на Haskell?</p><pre><code class="hs">data User = User { name :: String, age :: Int } deriving Show
+data Project = Project { owner :: User } deriving Show
+
+setOwnerName :: String -> Project -> Project
+setOwnerName newName p = p { owner = (owner p) { name = newName } }
+</code></pre></section><section><pre><code class="hs">data User = User { name :: String, age :: Int } deriving Show
+data Project = Project { owner :: User } deriving Show
+
+setOwnerName :: String -> Project -> Project
+setOwnerName newName p = p { owner = (owner p) { name = newName } }</code></pre><p>Видно, решение совсем не идеальное. Для того только, чтобы поменять поле name у owner, потребовалось переопределить поле owner у Project на новое значение типа User, которое получено из старого изменением поля name при помощи синтаксиса записей. 
+</p></section><section><p>Тот же результат можно достичь выполнив последовательно несколько следующих шагов в интерпретаторе:</p><pre><code class="hs">λ> let bob = User { name = "Bob", age = 30 }
+λ> let project = Project { owner = bob }
+
+λ> let alice = bob { name = "Alice" }
+λ> let project2 = project { owner = alice }</code></pre><p>Всё это очень утомительно по сравнению с оригинальным примером из ООП, тем более что  нужно восстанавливать исходную структуру по мере погружения все глубже и глубже.
+</p></section></section><section><h4>Линзы</h4><p>Линзы - это композируемый (composable) способ доступа к части значения.</p><p>По сути линзы - это просто пары из getter'ов и setter'ов, которые можно композировать</p><p>В первом приближении, тип для линз может выглядить как-то так:</p><pre><code class="hs">data NaiveLens s a = NaiveLens
+                       { view :: s -> a
+                       , set  :: a -> s -> s }
+-- Здесь тип s - это объект,
+--       тип a - это фокус
+-- В примере выше s = Project, a = String
+</code></pre></section><section><h4>Линзы</h4><p>Теперь, если у нас есть линза типа (NaiveLens User String), то с её помощью можно легко
+изменить поле name у user'а</p><pre><code class="hs">nameLens :: NaiveLens User String
+nameLens = NaiveLens name (\a s -> s { name = a })
+</code><code class="hs">λ> let john = User { name = "John", age = 30 }
+λ> set nameLens "Bob" john
+User {name = "Bob", age = 30}
+</code></pre></section><section><h4>Линзы</h4><p>Недостаток представленного подхода в его плохой масштабируемости. Если бы нам потребовалось 
+инкрементировать целевое поле, то тогда нам бы пришлось сперва вызвать функцию view, чтобы получить текущее значение поля, затем применить функцию +1, после чего вызвать set, чтобы установить новое значение. Всё это можно инкаспулировать, добавив в определение линзы третью функцию over:</p><pre><code class="hs">over :: (a -> a) -> s -> s
+</code></pre></section><section><h4>Линзы</h4><p>Функция over может быть использована похожим образом как и функция set:</p><pre><code class="hs">data NaiveLens s a = NaiveLens
+                 { view :: s -> a
+                 , set  :: a -> s -> s
+                 , over :: (a -> a) -> s -> s }
+
+ageLens :: NaiveLens User Int
+ageLens = NaiveLens age
+               (\a s -> s { age = a })
+               (\f s -> s { age = f (age s) })
+
+λ> let john = User { name = "John", age = 30 }
+λ> over ageLens (+1) john
+User {name = "John", age = 31}
+</code></pre></section><section><h4>Линза</h4><p>Проблема в том, что теперь для определения линзы, нужно предоставить getter и целых два 
+setter'а.</p><p>Возможное решение - использовать функцию (const :: a -> b -> b).
+С её помощью можно определить функцию (set :: a -> s -> s) через (over :: (a -> a) -> s -> s) путём частичного применения функции:</p><pre><code class="hs">set :: NaiveLens s a -> a -> s -> s
+set ln a s = over ln (const a) s
+</code></pre></section><section><h4>Линзы</h4><p>Получаем следующее определение для линз:</p><pre><code class="hs">data NaiveLens s a = NaiveLens
+                   { view :: s -> a
+                   , over :: (a -> a) -> s -> s }
+
+set :: NaiveLens s a -> a -> s -> s
+set ln a s = over ln (const a) s
+</code></pre></section><section><h4>Линзы с эффектами</h4><p>Функция over определенно полезная, но что если теперь требуется, чтобы функция модифицирующая значение производила какой-либо эффект. Например, может потребоваться отправить текущее значение в сеть, для определения нового значения. </p><p>Можно пойти старым путём и ввести новую функцию, скажем overIO:</p><pre><code class="hs">overIO :: (a -> IO a) -> s -> IO s
+</code></pre></section><section><h4>Линзы в эффектами</h4><p>Но в таком случае снова возникает два setter'а в определении линзы:</p><pre><code class="hs">data NaiveLens s a = NaiveLens
+                   { view   :: s -> a
+                   , over   :: (a -> a) -> s -> s
+                   , overIO :: (a -> IO a) -> s -> IO s }
+</code></pre></section><section><h4>(линзы Ван Лаарховена) van Laarhoven lens</h4><p>Для решения возникшей проблемы применяются генерализация, которая называется линзы Ван Лаарховена</p><p>Первый шаг - это переписать overIO в более общем виде, путём замены IO на Functor:</p><pre><code class="hs">overF :: Functor f => (a -> f a) -> s -> f s
+</code></pre></section><section><h4>Линзы</h4><p>Оказывается, что одной единственной фукнции overF достаточно, чтобы определить view, set, over и overIO.</p><p>Поэтому больше нет необходимости в отдельном типе Lens, с этого момент всё что нам нужно - это одна функция:</p><pre><code class="hs">type Lens s a = Functor f => (a -> f a) -> s -> f s
+</code></pre><p>И главное, благодаря определению линзы как сиснонима типов, теперь любая функция, которая имеет соответсвующий тип - это линза.
+</p></section><section><h4>Линзы. RankNTypes </h4><p>Однако, для того чтобы такое определение компилировалось, необходимо подключить расширение языка (а вообще говоря, системы типов, которое делает эту систему типов неконсистентной):</p><pre><code class="hs">{-# LANGUAGE RankNTypes #-}
+</code></pre></section><section><h4>Реализация over, set и view</h4><pre><code class="hs">-- нам пондобится два стандартных функтора
+import Data.Functor.Identity
+import Control.Applicative.Const
+</code></pre></section><section><h4>Функтор Identity</h4><pre><code class="hs">newtype Identity a = Identity { runIdentity :: a }
+
+instance Functor Identity where
+  fmap f (Identity a) = Identity (f a)</code></pre><p>Данный функтор позволят обернуть любое значение в функтор, при этом сам функтор не оказывает на значение никакого влияния. 
+</p></section><section><h4>Реализация over</h4><pre><code class="hs">over :: Lens s a -> (a -> a) -> s -> s
+-- тип over можно прочитать как
+-- дана линза, которая сфокусирована на величине a внутри s,
+-- и даны функция a -> a и s. over вернёт модифицированное значение s
+-- применив к месту фокусировки линзы функцию a -> a
+
+over ln f s = undefined
+</code></pre></section><section><h4>Реализация over</h4><pre><code class="hs">-- После раскрытия синонимо типов Lens, получим тип:
+over :: (Functor f => (a -> f a) -> (s -> f s)) ->
+  (a -> a) -> s -> s
+over ln f s = _
+</code></pre></section><section><h4>Реализация over</h4><pre><code class="hs">-- Всё что у нас есть только одна функция типа a -> f a - Identity
+over :: Lens s a -> (a -> a) -> s -> s
+over ln f s = _ (ln Identity)
+
+λ> let ln = undefined :: (Functor f => (a -> f a) -> (s -> f s))
+λ> :t ln Identity
+:: s -> Identity s
+</code><code class="hs">over :: Lens s a -> (a -> a) -> s -> s
+over ln f s = _ (ln (Identity . f))
+
+over :: Lens s a -> (a -> a) -> s -> s
+over ln f s = _ $ ln (Identity . f) s
+
+over :: Lens s a -> (a -> a) -> s -> s
+over ln f s = runIdentity $ ln (Identity . f) s
+
+--или
+over :: Lens s a -> (a -> a) -> s -> s
+over ln f = runIdentity . ln (Identity . f)
+</code></pre></section><section><h4>Реализация view.</h4><pre> <code class="hs">view :: Lens s a -> s -> a
+-- тип view можно прочитать как:
+-- дана линза сфокусированная на a внутри s и дано значение s. 
+-- Функция view вернёт значение a
+</code></pre></section><section><h4>Реализация view. Функтор Const</h4><p>Нам нужно при помощи значения типа ((a -> f a) -> s -> f s) (тип Lens s a), получить функцию 
+(s -> a), что означает, что нам нужен какой-то способ получить превратить f s в a. Здесь понадобится функтор Const:
+</p><pre><code class="hs">newtype Const a b = Const { getConst :: a }
+
+instance Functor (Const a) where
+  fmap _ (Const a) = Const a
+
+-- пример работы const
+λ> :t Const "hello"
+:: Const String b
+
+λ> let boolBox = fmap (&& False) (Const "hello")
+λ> :t boolBox
+Const [Char] Bool
+
+λ> :t fmap (_ -> 1.2 :: Double) boolBox
+:: Const String Double
+</code></pre></section><section><h4>Функтор Const</h4><p>Таким образом, функтор Const просто напросто игнорирует функцию, которую мы применяем к его значению и только лишь изменяет свой тип. В то же время оригинальное значение остаётся каким и было.
+</p><pre><code class="hs">λ> getConst boolBox
+"hello"
+λ> getConst $ fmap (_ -> 1.2 :: Double) boolBox
+"hello"
+</code></pre></section><section><h4>Реализация view.</h4><pre><code class="hs">view :: Lens s a -> s -> a
+view ln s = _
+
+view :: Lens s a -> s -> a
+view ln s = _ $ ln Const
+
+view :: Lens s a -> s -> a
+view ln s = _ $ ln Const s
+
+view :: Lens s a -> s -> a
+view ln s = getConst $ ln Const s
+</code></pre></section><section><h4>Реализация set.</h4><pre><code class="hs">set :: Lens s a -> a -> s -> s
+set ln x = over ln (const x)
+</code></pre></section><section><h4>Всё вместе</h4><pre><code class="hs">{-# LANGUAGE RankNTypes #-}
+
+import Data.Functor.Identity
+import Control.Applicative.Const
+
+type Lens s a = Functor f => (a -> f a) -> s -> f s
+
+over :: Lens s a -> (a -> a) -> s -> s
+over ln f = runIdentity . ln (Identity . f)
+
+view :: Lens s a -> s -> a
+view ln s = getConst $ ln Const s
+
+set :: Lens s a -> a -> s -> s
+set ln x = over ln (const x)
+</code></pre></section><section><h4>Полезные операторы</h4><pre><code class="hs">import Data.Function
+
+(^.) = view
+(.~) = set 
+
+(+~):: Num a  => Lens s a -> a -> s -> t
+(+~) ln x s = over (\y -> y + x) s
+
+(<>~):: Monoid a => Lens s a -> a -> s -> s
+(<>~) ln x s = over (\y -> mappend y x) s
+</code></pre></section><section><section><h4>Реализация линз. Проекция</h4><pre><code class="hs">_1 :: Functor f => (a -> f a) -> (a,b) -> f (a,b)
+_1 f (x,y) = _
+</code></pre></section><section><h4>Реализация линз. Проекция</h4><pre><code class="hs">_1 :: Functor f => (a -> f a) -> (a,b) -> f (a,b)
+_1 f (x,y) = f x -- ошибка типа
+</code></pre></section><section><h4>Реализация линз. Проекция</h4><pre><code class="hs">_1 :: Functor f => (a -> f a) -> (a,b) -> f (a,b)
+_1 f (x,y) = fmap _ (f x)
+</code></pre></section><section><h4>Реализация линз. Проекция</h4><pre><code class="hs">_1 :: Functor f => (a -> f a) -> (a,b) -> f (a,b)
+_1 f (x,y) = fmap (\a -> (a, y)) (f x)
+</code></pre></section></section><section><h4>Использование линз</h4><pre><code class="hs">λ> view _1 (1,2)
+1
+
+λ> set _1 3 (1,2)
+(3,2)
+λ> over _1 (+3) (1,2)
+(4,2)
+
+-- первоначальный пример
+data User = User { name :: String, age :: Int } deriving Show
+data Project = Project { owner :: User } deriving Show
+
+nameLens :: Lens User String
+nameLens f user = 
+  fmap (\newName -> user { name = newName }) (f (name user))
+
+ageLens :: Lens User Int
+ageLens f user = fmap (\newAge -> user { age = newAge }) (f (age user))
+
+ownerLens :: Lens Project User
+ownerLens f project = 
+  fmap (\newOwner -> project { owner = newOwner }) (f (owner project))
+</code></pre></section><section><h4>Композиция линз</h4><pre><code class="hs">ownerNameLens :: Lens Project String
+ownerNameLens = ownerLens.nameLens
+
+λ> let john = User { name = "John", age = 30 }
+λ> let p = Project { owner = john }
+λ> view ownerNameLens p
+"John"
+λ> set ownerNameLens "Bob" p
+Project {owner = User {name = "Bob", age = 30}}
+</code></pre></section><section><h4>Реальный тип линз</h4><pre><code class="hs">--type Lens s a = Functor f => (a -> f a) -> s -> f s
+type Lens s t a b = Functor f => (a -> f b) -> s -> f t
+</code></pre></section><section><h4>Foldable</h4><p>Операция свёртки (fold) позволяет взять некоторую структуру и редуцировать её (reduce) в отдельное значение.</p><p>Поэтому, в некотрых языках программирования опреация fold называется reduce</p><p>Для типов данных, которые можно свёрнуть, определён специальный класс типов Foldable</p><pre><code class="hs">class Foldable t where
+  fold    :: Monoid m => t m -> m
+  foldMap :: Monoid m => (a -> m) -> t a -> m
+
+  foldr   :: (a -> b -> b) -> b -> t a -> b
+  foldr'  :: (a -> b -> b) -> b -> t a -> b
+
+  foldl   :: (b -> a -> b) -> b -> t a -> b
+  foldl'  :: (b -> a -> b) -> b -> t a -> b
+
+  foldr1  :: (a -> a -> a) -> t a -> a
+  foldl1  :: (a -> a -> a) -> t a -> a
+</code></pre></section><section><h4>Foldable</h4><pre><code class="hs">import Data.Monoid
+
+λ> foldr1 (+) [1,2,3,4]
+10
+λ> fold ["hello", "world"]
+"helloworld" -- Strings are Monoids using concatenation
+λ> fold [1,2,3,4]
+<interactive>:1:1:
+    No instance for (Monoid a0) arising from a use of ‘it’
+
+λ> fold [Sum 1, Sum 2, Sum 3, Sum 4]
+Sum {getSum = 10}
+</code></pre></section><section><h4>Foldable</h4><pre><code class="hs">import Data.Monoid
+
+λ> foldMap Sum [1,2,3,4]
+Sum {getSum = 10}
+</code></pre></section><section><h4>Foldable</h4><pre><code class="hs">-- fold через foldMap
+fold :: Monoid m => t m -> m
+fold xs = foldMap id xs
+
+λ> :t id
+:: a -> a
+λ> :t fold
+:: (Monoid m, Foldable t) => t m -> m
+λ> :t foldMap
+:: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+λ> :t foldMap id
+:: (Monoid m, Foldable t) => t m -> m
+</code></pre></section><section><h4>Travesable</h4><p>Travesable даёт возможность пройти по некоторой структуре, при этом не изменяя саму структуру, а только её элементы.</p><pre><code class="hs">class (Functor t, Foldable t) => Traversable t where
+  traverse  :: Applicative f => (a -> f b) -> t a -> f (t b)
+  sequenceA :: Applicative f => t (f a) -> f (t a)
+</code></pre></section><section><section> <h4>List</h4><pre><code class="hs">traverse _ [] = pure []
+traverse f (x:xs) = _
+</code></pre></section><section> <h4>List</h4><pre><code class="hs">traverse _ [] = pure []
+traverse f (x:xs) = f x -- type error f b, нужно f [b]
+</code></pre></section><section> <h4>List</h4><pre><code class="hs">instance Traversable [] where
+    traverse _ [] = pure []
+    traverse f (x:xs) = fmap (:[]) (f x)
+</code></pre></section><section> <h4>List</h4><pre><code class="hs">instance Traversable [] where
+    traverse _ [] = pure []
+    traverse f (x:xs) = (f x) _ traverse f xs
+</code></pre></section><section> <h4>List</h4><pre><code class="hs">instance Traversable [] where
+    traverse _ [] = pure []
+    traverse f (x:xs) = (:) <$> f x <*> traverse f xs
+</code></pre></section></section><section><h4>sequenceA</h4><pre><code class="hs">traverse _ [] = pure []
+traverse f (x:xs) = (:) <$> f x <*> traverse f xs
+
+sequenceA [] = pure []
+sequenceA (x:xs) = (:) <$> x <*> sequenceA xs
+
+-- через traverse
+sequenceA :: (Traversable t, Applicative f) => t (f a) -> f (t a)
+sequenceA xs = traverse id xs
+
+-- и наоборот
+traverse :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
+traverse f xs = sequenceA $ fmap f xs
+</code></pre></section><section><h4>Travesable</h4><pre><code class="hs">class (Functor t, Foldable t) => Traversable t where
+  traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
+  traverse f xs = sequenceA $ fmap f xs
+
+  sequenceA :: Applicative f => t (f a) -> f (t a)
+  sequenceA xs = traverse id xs
+</code></pre></section><section><h4>Functor и Foldable через Travesable</h4><pre><code class="hs">fmapDefault :: Traversable t => (a -> b) -> t a -> t b
+fmapDefault f x = runIdentity $ traverse (Identity . f) x
+
+foldMapDefault :: (Traversable t, Monoid m) => (a -> m) -> t a -> m
+foldMapDefault f x = getConst $ traverse (Const . f) x
+
+</code></pre></section><section><h4>Functor и Foldable через Travesable</h4><pre><code class="hs">data List a = Nil
+      | Cons a (List a)
+      deriving Show
+
+instance Functor List where
+    fmap = fmapDefault
+
+instance Foldable List where
+    foldMap = foldMapDefault
+
+instance Traversable List where
+    traverse _ Nil = pure Nil
+    traverse f (Cons x xs) = fmap Cons (f x) <*> traverse f xs
+</code></pre></section><section><h4>Travesable</h4><pre><code class="hs">λ> traverse (\x -> Just (x + 1)) (Cons 1 (Cons 2 (Cons 3 Nil)))
+Just (Cons 2 (Cons 3 (Cons 4 Nil)))
+λ> fold (Cons "hello" (Cons "world" Nil))
+"helloworld"
+λ> fmap (+1) (Cons 1 (Cons 2 (Cons 3 Nil)))
+Cons 2 (Cons 3 (Cons 4 Nil))
+</code></pre></section><section><h4>Линзы</h4><pre><code class="hs">{-# LANGUAGE RankNTypes #-}
+
+import Data.Functor.Identity
+
+type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
+
+over :: Lens s t a b -> (a -> b) -> s -> t
+over ln f s = runIdentity $ ln (Identity . f) s
+
+-- наш первоначальный тип
+type Lens' s a = Lens s s a a
+</code></pre></section><section><h4>Линзы</h4><pre><code class="hs">λ> :t ("hello", "world")
+:: (String, String)
+λ> :t over _1 length ("hello", "world")
+:: (Int, String)
+λ> over _1 length ("hello", "world")
+(5,"world")</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>

@@ -1,0 +1,433 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 12</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><h4>Монада</h4><p>Монада – моноид в категории эндофункторов &copy; wikipedia</p><p>Пусть у нас есть какой-нибудь эндофунктор на категории Hask (т.е. тип f, являющийся экземпляром класса Functor).
+Дополним его структурой моноида.</p><p>Обобщённый моноид M в моноидальной категории C — это морфизм (++) в этой категории из M ⊗ M в M,
+а также морфизм mempty из I в M.</p><pre><code class="hs">class  MonoidCat (~>) ( ⊗) I => Monoid (~>) (⊗) I M  where
+  (++) :: M M -> M   (join :: Monad m => m (m a) -> m a)
+  mempty :: I -> M
+</code></pre></section><section><h4>Монады. Зачем?</h4><img src="./img/12-0.jpg"/></section><section><h4>return</h4><pre><code class="hs">class Monad m where
+  (>>=) :: m a -> (a -> m b) -> m b
+  return :: a -> m a
+
+> :t return
+return :: Monad m => a -> m a
+> return "Hello" == Just "Hello"
+?
+> return "Hello" == ["Hello"]
+?
+</code></pre></section><section><h4>Do-нотация</h4><pre><code class="hs">do {p} = p
+do {p;stmts} = p >> do {stmts}
+do {x <- p;stmts} = p >>= \x -> do {stmts}
+</code></pre></section><section><h4>Законы монад</h4><p>Согласованность</p><pre><code class="hs">(p >>= return) = p
+do {x <- p; return x} = do {p}</code></pre><pre><code class="hs">(return e >>= f) = f e
+do {x <- return e; f x} = do {f e}
+</code></pre></section><section><h4>Законы монад</h4><p>Ассоциативность (>>=)</p><pre><code class="hs">((p >>= f) >>= g) = p >>= (\x -> (f x >>= g))</code></pre><p>Этот закон позволяет воспринимать последовательность a ; b ; c ; ... как монолитную и не заботиться о расстановке скобок в ней.</p></section><section><h4>Законы монад</h4><p>Композиция Клейсли</p><pre><code class="hs">(>=>) :: Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+(f >=> g) x = f x >>= g
+</code></pre></section><section><h4>Законы монад</h4><div><pre><code class="hs">> let x = [1,2,3]
+> (x >>= return) == x
+?</code></pre></div><div class="fragment"><pre><code class="hs">True</code></pre><p>(согласованность) правая единица (x >>= return) = x</p><p>Можно переписать этот закон как</p><pre><code class="hs">(x >>= (\a -> return a)) = x</code></pre><p>то есть, связывание монадного вычисления x с вычислением, зависящим от параметра и просто-напросто возвращающим
+этот параметр, есть тождественная функция
+</p></div></section><section><h4>Стандартные монады</h4><p>Монада Identity (тождественная монада), не меняет ни тип значений, ни стратегию связывания вычислений.</p><pre><code class="hs">data Identity a = Identity a
+
+return a = Identity a
+(Identity a) >>= f = f a
+</code></pre></section><section><h4>Стандартные монады</h4><p>Maybe (монада вычислений с обработкой отсутствующих значений)</p><pre><code class="hs">data Maybe a = Nothing | Just a
+
+return a = Just a
+Nothing >>= f = Nothing
+(Just a) >>= f = f a
+</code></pre></section><section><h4>Maybe</h4><pre><code class="hs">lookup :: a -> [(a, b)] -> Maybe b
+
+case lookup 'f' [('f','u'),('n','n'),('y','?')] of
+  Nothing -> Nothing
+  Just y -> case lookup y [('o','l'),('u','c'),('k','y')] of
+    Nothing -> Nothing
+    Just z -> lookup z [('d','u'),('c','k')]
+</code></pre></section><section><h4>Maybe</h4><pre><code class="hs">lookup 'f' [('f','u'),('n','n'),('y','?')] >>=
+  (\a -> lookup a [('o','l'),('u','c'),('k','y')]) >>=
+    (\b → lookup b [('d','u'),('c','k')])
+</code></pre></section><section><h4>Maybe</h4><pre><code class="hs">lookupM list a = lookup a list
+lookupM list = \a -> lookup a list
+lookupM = flip lookup
+
+Just 'f' >>=
+  lookupM [('f','u'),('n','n'),('y','?')] >>=
+    lookupM [('o','l'),('u','c'),('k','y')] >>=
+      lookupM [('d','u'),('c','k')]
+</code></pre></section><section><h4>Maybe (do)</h4><pre><code class="hs">do
+  y <- lookup 'f' [('f','u'),('n','n'),('y','?')]
+  z <- lookup y [('o','l'),('u','c'),('k','y')]
+  return (lookup z [('d','u'),('c','k')])
+</code></pre></section><section><h4>Maybe</h4><pre><code class="hs">maybeHalf :: Int -> Maybe Int
+maybeHalf a
+  | even a = Just (div a 2)
+  | otherwise = Nothing
+
+> Just 10 >>= maybeHalf
+Just 5
+> Just 10 >>= maybeHalf >>= maybeHalf
+Nothing
+> Just 10 >>= maybeHalf >>= maybeHalf >>= maybeHalf
+Nothing
+</code></pre></section><section><h4>Maybe</h4><pre><code class="hs">maybeHalfN :: Int -> Int -> Maybe Int
+?</code></pre><pre class="fragment"><code class="hs">maybeHalfN :: Int -> Int -> Maybe Int
+maybeHalfN 0 a = Just a
+maybeHalfN n a = maybeHalf a >>= (\x -> maybeHalfN (n-1) x)
+
+maybeHalfN n a = do
+  result <- maybeHalf a
+  maybeHalfN (n-1) result
+</code></pre></section><section><h4>Стандартные монады</h4><p>Монада List (вычисления, которые могут возвращать 0 или более результатов)</p><p>В этой монаде значения представляют собой списки, которые можно интерпретировать как несколько возможных результатов
+одного вычисления. Если одно вычисление зависит от другого, то второе вычисление производится для каждого результата
+первого, и полученные результаты (второго вычисления) собираются в список.</p><pre><code class="hs">return a = [a]
+params >>= f = concat [f x | x <- params]
+</code></pre></section><section><h4>List</h4><p>Таким образом, params >>= f :: [b], как и следовало ожидать – это список возможных результатов применения функции к
+каждому из вариантов входного аргумента.</p><pre><code class="hs">let x = [1 .. 5] >>= (\x -> [x .. x+3 ])</code></pre><pre><code class="fsharp">[1,2,3,4] |> filter (fun x -> odd x)</code></pre><pre><code class="hs">["~/music", "~/work"] >>= getDirectoryContents =
+  ["~/music/Bach", "~/music/Beethoven", "~/music/Rammstein",
+    "~/work/projects", "~/work/documents"]
+</code></pre></section><section><h4>Bind</h4><pre><code class="hs">(>>=) :: Maybe a -> (a -> Maybe b) -> Maybe b
+
+hiAll :: Maybe String
+hiAll = Just "Hello" >>= (\x ->
+      Just " all" >>= (\y ->
+      Just (x ++ y)))
+
+hiAll :: Maybe String
+hiAll = do
+    x <- Just "Hello"
+    y <- Just " all"
+    return (x ++ y) -- Just  (x ++ y)
+</code></pre></section><section><h4>Bind</h4><pre><code class="hs">(>>=) :: [a] -> (a -> [b]) -> [b]
+
+[(x, y) | x <- [1, 2, 3], y <- [1, 2, 3], x /= y]
+
+do
+  x <- [1, 2, 3]
+  y <- [1, 2, 3]
+  True <- return (x /= y)
+  return (x, y)
+
+[1, 2, 3] >>= (\x -> [1, 2, 3] >>= (\y -> return (x /= y) >>=
+  (\r -> case r of
+    True -> return (x, y)
+    _    -> fail "")))
+</code></pre></section><section><section> <h4>Связь Монады с Фукнтором и Аппликативным функтором</h4><p>Показать, что любую монаду можно использовать как фукнтор и как аппликативный функтор. </p><p>Указание: используя:</p><pre><code class="hs">return :: a -> m a
+(>>=)  :: m a -> (a -> m b) -> m b</code></pre><p>реализовать функции:</p><pre><code class="hs">fmap' :: (a -> b) -> m a -> m b
+pure' :: a -> m a
+ap'   :: m (a -> b) -> m a -> m b</code></pre></section><section><h4>Связь Монады с Фукнтором и Аппликативным функтором</h4><pre><code class="hs">fmap' f mx = mx >>= (return . f)
+pure'      = return
+ap' mf mx  = mf >>= \f -> mx >>= return.f
+</code></pre></section></section><section><h4>Стандартные монады</h4><p>Монада IO, определяет операцию (>>=) как последовательное выполнение двух её операндов, а результат выполнения
+первого операнда последовательно передаётся во второй</p><pre><code class="hs">class Monad m where
+  (>>=)  :: m a    -> (a -> m b) -> m b
+  (>>)   :: m a    -> m b -> m b
+  return :: a      -> m a
+  fail   :: String -> m a
+
+m >> k = m >>= \_ -> k
+</code></pre></section><section><h4>IO return</h4><pre><code class="hs">numIO :: IO Int
+numIO = return 42
+
+let numIO2 = (return 42) :: IO Int
+
+(return ()) :: IO ()
+</code></pre></section><section><h4>IO</h4><pre><code class="hs">putChar :: Char -> IO ()
+putChar 'x'
+
+(>>) :: IO () -> IO () -> IO ()
+putChar 'x' >> putChar '\n'
+
+putCharLn x = putChar x >> putChar '\n'
+
+return :: a -> IO a
+
+psLn :: String -> IO ()
+psLn xs = ?</code><code class="hs fragment">psLn :: String -> IO ()
+psLn [] = putChar '\n'
+psLn (x:xs) = putChar x >> psLn xs</code><code class="hs fragment">psLn xs = foldr (>>) (return ()) (map putChar xs) >> putChar '\n'
+psLn xs = foldr (>>) (putChar '\n') (map putChar xs)
+>:t map putChar []
+</code></pre></section><section><h4>IO</h4><pre><code class="hs">getChar :: IO Char
+
+(>>=) :: IO a -> (a -> IO b) -> IO b
+
+gl :: IO [Char]
+gl = getChar >>= \x ->
+        if x == '\n' then return []
+        else getLine >>= \xs -> return (x:xs)
+</code></pre></section><section><h4>IO (do-нотация)</h4><pre><code class="hs">gl = do
+  x <- getChar
+  if x == '\n' then return []
+  else do
+    xs <- gl
+    return (x:xs)
+</code></pre></section><section><h4>IO - функтор</h4><pre><code class="hs">instance Functor IO where
+  fmap f action = do
+    result <- action
+    return (f result)
+
+main = do
+  line <- getLine
+  let line' = (++ "!") line
+  putStrLn line'
+
+main = do
+  line <- fmap (++ "!") getLine
+  -- line <- fmap ((++ "!") . reverse) getLine
+  putStrLn line
+</code></pre></section><section><h4>IO - аппликативный функтор</h4><pre><code class="hs">instance Applicative IO where
+  pure = return
+  a <*> b = do
+    f <- a
+    x <- b
+    return (f x)
+
+concatLines :: IO String
+concatLines = do
+  a <- getLine
+  b <- getLine
+  return $ a ++ b
+
+concatLines :: IO String
+concatLines = (++) <$> getLine <*> getLine
+</code></pre></section><section><h4>IO</h4><pre><code class="hs">import Control.Monad
+import System.Random
+
+randomRIO (1,6)
+
+rollDiceIO :: IO (Int, Int)
+rollDiceIO = liftM2 (,) (randomRIO (1,6)) (randomRIO (1,6))
+rollDiceIO = (,) <$> (randomRIO (1,6)) <*> (randomRIO (1,6))
+
+rollNDiceIO ?
+</code></pre></section><section><h4>IO</h4><pre><code class="hs">rollNDiceIO :: Int -> IO [Int]
+rollNDiceIO 0 = return []
+rollNDiceIO n =
+  randomRIO (1, 6) >>=
+    (\num -> rollNDiceIO (n-1) >>=
+      (\list -> return (num:list)))
+</code></pre></section><section><h4>IO</h4><pre><code class="hs">rollNDiceIO :: Int -> IO [Int]
+rollNDiceIO 0 = return []
+rollNDiceIO n = do
+  num <- randomRIO (1, 6)
+  list <- rollNDiceIO (n-1)
+  return (num:list)
+</code></pre></section><section><h4>Коммутативность IO</h4><pre><code class="hs">num <- randomRIO (1, 6)
+list <- rollNDiceIO (n-1)
+return (num:list)
+
+list <- rollNDiceIO (n-1)
+num <- randomRIO (1, 6)
+return (num:list)
+</code></pre></section><section><h4>ФВП и IO</h4><pre><code class="hs">rollNDiceIO :: Int -> IO [Int]
+rollNDiceIO n = replicateM n (randomRIO (1, 6))
+
+rollNDiceIO n = sequence $ map (\a -> randomRIO(1,6)) [1..n]
+</code></pre></section><section><h4>Control.Monad</h4><pre><code class="hs">sequence :: Monad m => [m a] -> m [a]
+mapM, mapM_  :: Monad m => (a -> m b) -> [a] -> m [b]
+putStr  :: String -> IO ()
+foldM :: Monad m => (a -> b -> m a) -> a -> [b] -> m a
+liftM :: Monad m => (a1 -> r) -> m a1 -> m r
+ap :: Monad m => m (a -> b) -> m a -> m b
+return f `ap` x1 `ap` ... `ap` xn
+-- return (,,) `ap` (Just 4) `ap` (Just 2) `ap` (Just 3)
+liftMn f x1 x2 ... xn
+-- :t liftM3 (,,)
+fail :: String -> m a
+</code></pre></section><section> <h4>Монада Reader</h4><p>Вычисления, которые могут читать некоторое состояние.</p><pre><code class="hs">newtype Reader r a = Reader {runReader:: r -> a}
+
+instance Applicative (Reader r)
+
+instance Functor (Reader r) 
+
+instance Monad (Reader r) where
+  -- return::a -> Reader r a
+  return x = Reader $ const x
+  --bind::Reader r a -> a -> Reader r b -> Reader r b
+  (>>=) a f = Reader $ \r -> runReader (f (runReader a r)) r
+</code></pre></section><section> <h4>Монада Reader</h4><pre><code class="hs">ask:: Reader r r
+ask = Reader id
+
+local::(r -> r) -> Reader r a -> Reader r a
+local f r = Reader $ runReader r . f
+
+reader::(r -> a) -> Reader r a
+reader f = do
+      r <- ask
+      return (f r)
+--reader = Reader
+asks = reader
+</code></pre></section><section> <h4>Монада Reader</h4><pre><code class="hs">hello = do
+  name <- ask
+  return ("hello, " ++ name ++ "!")
+
+bye :: Reader String String
+bye = do
+    name <- ask
+    return ("bye, " ++ name ++ "!")
+
+convo :: Reader String String
+convo = do
+    c1 <- hello
+    c2 <- bye
+    return $ c1 ++ c2
+
+main = print . runReader convo $ "adit"
+</code></pre></section><section> <h4>Монада Writer</h4><p>Вычисления, которые могут записывать в некоторое состояние, вести лог.</p><pre><code class="hs">newtype Writer w a = Writer {runWriter :: (a, w)}
+
+instance (Monoid w) => Functor (Writer w) where
+  --fmap :: (a -> b) -> Writer w a -> Writer w b
+  fmap f (Writer (x, v)) = Writer (f x, v)
+
+instance (Monoid w) => Applicative (Writer w)  where
+  pure = return
+  --(<*>)::Writer w (a -> b) -> Writer w a -> Writer w b
+  (Writer (f, v1)) <*> (Writer (x, v2)) = Writer (f x, v1 `mappend` v2)
+
+instance (Monoid w) => Monad (Writer w) where 
+  return x = Writer (x, mempty)
+  (Writer (x, v)) >>= f =
+      let Writer (y, v') = f x in Writer (y, v `mappend` v')
+</code></pre></section><section><h4>Монада Writer</h4><pre><code class="hs">writer::(a, w) -> Writer w a
+writer ~(a, w) = Writer (a, w)
+
+tell::w -> Writer w ()
+tell w = writer ((), w)
+
+listen::Writer w a -> Writer w (a, w)
+listen (Writer (a, w)) = writer ((a,w), w)
+
+pass ::Writer w (a, w -> w) -> Writer w a
+pass (Writer ((a, f), w)) = writer (a, f w)
+</code></pre></section><section><h4>Монада State</h4><p>Вычисления, которые могут записывать и читать некоторое состояние.</p><pre><code class="hs">type State s a = s -> (a,s)
+
+return :: a -> State s a
+return x = State ( \ st -> (x, st) )
+
+put :: s -> State s ()
+get :: State s s
+state :: (s -> (a,s)) -> State s a
+runState State s a -> (s -> (a, s))
+evalState State s a -> s -> a
+</code></pre></section><section><h4>State</h4><pre><code class="hs">newtype State s a = State { runState :: s -> (a, s) }
+instance Monad (State s) where
+  return :: a -> State s a
+  return x = State ( \ st -> (x, st) )
+  (>>=) :: State s a -> (a -> State s b) -> State s b
+  processor >>= processorGenerator = State $ \ st ->
+    let (x, st') = runState processor st
+    in runState (processorGenerator x) st'
+</code></pre></section><section><h4>Монада State</h4><pre><code class="hs">import Control.Monad.State
+fact3 :: Integer -> State Integer Integer
+fact3 0 = return 1
+fact3 n = do
+  let n' = n-1
+  modify (+1)
+  m <- fact3 n'
+  let r = n*m
+  modify (+1)
+  return r
+
+runState (fact3 10) 0
+</code></pre></section><section><h4>State</h4><pre><code class="hs">runState (return 'X') 1
+runState get 1
+runState (put 5) 1
+runState (do { put 5; return 'X' }) 1
+-- runState (put 5 >>= \_ -> return 'X') 1
+postincrement :: State Int Int
+postincrement = do { x <- get; put (x+1); return x }
+runState postincrement 1
+predecrement = do { x <- get; put (x-1); get }
+runState predecrement 1
+runState (modify (+1)) 1
+
+runState (gets (+1)) 1
+evalState (gets (+1)) 1
+execState (gets (+1)) 1
+</code></pre></section><section><h4>State</h4><pre><code class="hs">return :: a -> State s a
+return x s = (x,s)
+
+get :: State s s
+get s = (s,s)
+
+put :: s -> State s ()
+put x s = ((),x)
+
+modify :: (s -> s) -> State s ()
+modify f = do { x <- get; put (f x) }
+
+gets :: (s -> a) -> State s a
+gets f = do { x <- get; return (f x) }
+</code></pre></section><section><h4>State</h4><pre><code class="hs">import Control.Monad.State
+list2tree xs = evalState (build (length xs)) xs
+build :: Int -> State [a] (Tree a)
+build 0 = return Empty
+build 1 = do
+  x:xs <- get
+  put xs
+  return (Node x Empty Empty)
+build n = do
+  x:xs <- get
+  put xs
+  let m = div (n-1) 2
+  u <- build m
+  v <- build (n-1-m)
+  return (Node x u v)
+</code></pre></section><section><h4>Задание</h4><pre><code class="hs">data Tree a = Leaf a | Node (Tree a) (Tree a) ?</code></pre></section><section><h4>Random</h4><pre><code class="hs">import System.Random
+import Data.Char
+
+type GeneratorState = State StdGen
+type Generator = (GeneratorState Int, GeneratorState Int)
+
+randomChar :: GeneratorState Char
+randomChar = do
+  gen <- get
+  let (charInt, newGenerator) = randomR (97, 122) gen
+  put newGenerator
+  return (chr charInt)
+
+evalState randomChar (mkStdGen 0)
+</code></pre></section><section><h4>Random</h4><pre><code class="hs">randomString :: GeneratorState String
+randomString = do
+  gen <- get
+  let (v10, newGen) = randomR (1, 9) gen :: (Int, StdGen)
+  case v10 of
+    1 -> put newGen >> return []
+    _ -> do
+      let (x, newGen') = runState randomChar newGen
+      let (xs, newGen'') = runState randomString newGen'
+      put newGen''
+      return (x:xs)</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 11</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><h4>Деревья</h4><pre><code class="hs">data Tree a = EmptyTree | Node a (Tree a) (Tree a)
+
+list2tree2 :: [a] -> Tree a
+list2tree2 xs = ?</code></pre><p>Написать функцию, строящую сбалансированное дерево в один проход</p><p>Это не дерево поиска!</p></section><section><h4>Деревья</h4><pre><code class="hs">list2tree2 xs = fst (build (length xs) xs)
+
+build :: Int -> [a] -> (Tree a, [a])
+build 0 xs = (EmptyTree, xs)
+build 1 (x:xs) = (Node x EmptyTree EmptyTree, xs)
+build n (x:xs) = (Node x u v, xs'')
+  where
+  m = div (n-1) 2
+  (u, xs') = build m xs
+  (v, xs'') = build (n-1-m) xs'
+</code></pre></section><section><h4>Категории</h4><div><img src="./img/11-0.png"/></div><div><ul><li>набор объектов</li><li>набор морфизмов</li></ul></div></section><section><h4>Категории</h4><p>Разные аксиомы</p><div><ul><li>композиция ассоциативна</li><li>есть тождественный морфизм</li></ul></div><div><img src="./img/11-1.gif"/></div><p>&copy; wikipedia</p></section><section><h4>Категории</h4><p>когда домен = кодомен, это – эндоморфизм</p><p>классический пример: категория Set</p><p>объекты категории Set — это всевозможные множества, а морфизмы — это функции между этими множествами.</p></section><section><h4>категория Hask</h4><p>объекты — это типы данных, возможные в языке Haskell: Int, [], Tree, a, b</p><p>а морфизмы — функции языка Haskell: Int → Int, (a → b) → a → b, Tree → Int</p></section><section><h4>Категории</h4><pre><code class="hs">class  Category (~>)  where
+  (.) :: (a ~> b) ­-> (b ~> c) -­> (a ~> c)
+  id  :: a ~> a</code></pre><p>законы:</p><ul><li>∀ a, b, c : a . (b . c) = (a . b) . c</li><li>∀ m : m . id = m = id . m</li></ul></section><section><h4>Функторы</h4><p>функтор F — тип отображений между категориями, позволяет сохранить структуру категорий при создании между ними различных связей</p><p>другими словами, это гомоморфизм между двумя категориями</p><p>При этом функтор отображает объекты первой категории в объекты второй,
+а морфизмы первой — в морфизмы второй категории.
+К тому же накладываются определённые ограничения — аксиомы.</p><p>Если функтор отображает категорию саму в себя, такой функтор называется эндофунктором.
+</p></section><section><h4>Функторы</h4><p>Любой конструктор выполняет преобразования</p><p>[]: a -> [a]</p><p>Maybe: b -> Maybe b: Just b | Nothing</p><p>data C c = …</p><p>C: c → C c</p><p>Если теперь такое отображение объектов (конструктор типов C с одним параметром) дополнить <strong>отображением морфизмов</strong>,
+то получим функтор, действующий из Hask в Hask, эндофунктор на категории Hask.
+</p></section><section><h4>Функторы</h4><pre><code class="hs">class Functor f where
+   fmap :: (a -> b) -> f a -> f b</code></pre><ul><li><pre>∀ f, g : fmap f . fmap g = fmap (f . g)</pre></li><li><pre>fmap id = id
+id x = x
+fmap id x = id x
+</pre></li></ul></section><section><h4>Функторы (Списки)</h4><pre><code class="hs">> map (+1) [1,2,3,4,5]
+[2,3,4,5,6]
+
+instance Functor [] where
+  fmap = map
+</code></pre></section><section><h4>Функторы (Списки)</h4><pre><code class="hs">fmap id = id
+fmap (g . h) = fmap g . fmap h
+
+(read . show $ 4)::Int
+fmap (show . (+2)) [1..4]
+(fmap show . fmap (+2)) [1..4]
+</code></pre></section><section><h4>Функторы (Деревья)</h4><pre><code class="hs">instance Functor Tree where
+  fmap g EmptyTree = EmptyTree
+  fmap g (Node a l r) = Node (g a) (fmap g l) (fmap g r)
+</code></pre></section><section><h4>Функторы</h4><pre><code class="hs">fmap length (list2tree2 ["goodbye", "cruel", "world"])
+</code></pre></section><section><h4>Функторы</h4><pre><code class="hs">instance Functor Maybe where
+   fmap f (Just x) = Just (f x)
+   fmap _ Nothing  = Nothing
+
+fmap show . fmap (+2) $ Just 4
+fmap (show . (+2)) $ Just 4
+fmap show . fmap (+2) $ Nothing
+</code></pre></section><section><h4>Функторы</h4><pre><code class="hs">instance Functor Maybe where
+   fmap f (Just x) = Just (f x)
+   fmap _ Nothing  = Nothing
+
+Доказать, что
+fmap (f . g) = fmap f . fmap g
+fmap (f . g) F = fmap f (fmap g F)
+</code></pre></section><section><h4>Понимание функтора</h4><pre><code class="hs">:t fmap
+
+fmap :: Functor f => (a -> b) -> f a -> f b
+
+fmap :: Functor f => (a -> b) -> (f a -> f b)
+
+.:t fmap (show . (1+))
+... :: (Functor f, Num b, Show b) => f b -> f String
+
+.:t fmap (replicate 3)
+... :: Functor f => f a -> f [a]
+
+fmap (replicate 3) [1,2,3]
+fmap (replicate 3) $ Just 2
+
+fmap (replicate 3) Just 2 ?
+</code></pre></section><section><h4>Аппликативные функторы</h4><pre><code class="hs">let a = fmap (*) [1,2,3,4]
+.:t a
+a :: Num a => [a -> a]
+fmap (\f -> f 9) a
+[9,18,27,36]
+
+import Control.Applicative
+
+class (Functor f) => Applicative f where
+  pure :: a -> f a
+  (<*>) :: f (a -> b) -> f a -> f b
+</code></pre></section><section><h4>Аппликативные функторы (Maybe)</h4><pre><code class="hs">instance Applicative Maybe where
+    pure = Just
+    Nothing <*> _ = Nothing
+    (Just f) <*> something = fmap f something
+
+Just (+3) <*> Just 9
+pure (+3) <*> Just 9
+Just (++"hahah") <*> Nothing
+Nothing <*> Just "woot"
+
+pure (+) <*> Just 3 <*> Just 5
+pure (\x y z -> x + y + z) <*> Just 3 <*> Just 5 <*> Just 2
+</code></pre></section><section><h4>Аппликативные функторы (Maybe)</h4><pre><code class="hs">(<$>) :: (Functor f) => (a -> b) -> f a -> f b
+f <$> x = fmap f x
+
+pure (\x y z -> x + y + z) <*> Just 3 <*> Just 5 <*> Just 2
+(\x y z -> x + y + z) <$> Just 3 <*> Just 5 <*> Just 2
+</code></pre></section><section><h4>Аппликативные функторы (List)</h4><pre><code class="hs">instance Applicative [] where
+  pure x = [x]
+  fs <*> xs = [f x | f <- fs, x <- xs]
+
+[(*0),(+100),(^2)] <*> [1,2,3]
+[0,0,0,101,102,103,1,4,9]
+
+[(+),(*)] <*> [1,2] <*> [3,4]
+[4,5,5,6,3,4,6,8]
+
+[ x*y | x <- [2,5,10], y <- [8,10,11]]
+[16,20,22,40,50,55,80,100,110]
+
+(*) <$> [2,5,10] <*> [8,10,11]
+[16,20,22,40,50,55,80,100,110]
+</code></pre></section><section><h4>Аппликативные функторы (ZipList)</h4><pre><code class="hs">newtype ZipList a = ZipList { getZipList :: [a] }
+instance Applicative ZipList where
+  pure x = ZipList (repeat x)
+  ZipList fs <*> ZipList xs =
+    ZipList (zipWith (\f x -> f x) fs xs)
+
+getZipList $ (+) <$> ZipList [1,2,3] <*> ZipList [1,1,1]
+[2,3,4]
+
+getZipList $ (+) <$> ZipList [1,2,3] <*> ZipList [1,1..]
+[2,3,4]
+
+getZipList $ (,,) <$> ZipList "dog"
+  <*> ZipList "cat" <*> ZipList "rat"
+[('d','c','r'),('o','a','a'),('g','t','t')]
+</code></pre></section><section><h4>Аппликативные функторы</h4><pre><code class="hs">liftA2 :: (Applicative f) => (a -> b -> c) -> f a -> f b -> f c
+liftA2 f a b = f <$> a <*> b
+
+liftA2 (:) (Just 1) (Just [2])
+
+liftA3 (,,) [1] [2] [3]
+</code></pre></section><section><h4>Аппликативные функторы</h4><pre><code class="hs">sequenceA :: (Applicative f) => [f a] -> f [a]
+sequenceA [] = pure []
+sequenceA (x:xs) = (:) <$> x <*> sequenceA xs
+
+sequenceA [Just 3, Just 2, Just 1]
+sequenceA [Just 3, Nothing, Just 1]
+sequenceA [(+3),(+2),(+1)] 3
+sequenceA [[1,2,3],[4,5,6]]
+sequenceA [[1,2,3],[4,5,6],[3,4,4],[]]
+
+-- sequenceA через свертку !
+</code></pre></section><section><h4>Аппликативные функторы</h4><pre><code class="hs">sequenceA' :: (Applicative f) => [f a] -> f [a]
+sequenceA' = foldr (liftA2 (:)) (pure [])
+
+and $ map (\f -> f 7) [(>4),(<10),odd]
+True
+
+and $ sequenceA [(>4),(<10),odd] 7
+True
+
+.:t getLine
+getLine :: IO String
+
+sequenceA [getLine, getLine, getLine]
+</code></pre></section><section><h4>Аппликативные функторы</h4><pre><code class="hs">pure f <*> x = fmap f x
+pure id <*> v = v
+pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+pure f <*> pure x = pure (f x)</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>

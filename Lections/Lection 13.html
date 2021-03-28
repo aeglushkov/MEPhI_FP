@@ -1,0 +1,364 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Lection 13</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css">
+
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section><h4>Класс Alternative (module Control.Applicative)</h4><p>Alternative - это Applicative с дополнительной моноидальной операцией.
+</p><pre><code class="hs">class Applicative f => Alternative f where
+  empty :: f a
+  (<|>) :: f a -> f a -> f a
+</code></pre></section><section><h4>Класс Alternative и Monoid</h4><pre><code class="hs">class Monoid m where
+  mappend :: m -> m -> m
+  mempty :: m
+
+class Applicative f => Alternative f where
+  empty :: f a -- соответсвует mempty
+  (<|>) :: f a -> f a -> f a -- соответсвует mappend
+</code></pre></section><section><h4>Моноиды среди Applicative</h4><pre><code class="hs">instance (Monoid a) => Monoid (Maybe a) where
+  mempty = Nothing
+  Nothing `mappend` m = m
+  m       `mappend` Nothing = m
+  Just m1 `mappend` Just m2 = Just m1 `mappend` m2
+-- Альтернативное определение:
+newtype First a = First {getFirst :: Maybe a}
+
+instance Monoid (First a) where
+  mempty = First Nothing
+  Nothing `mappend` m = m
+  m@(Just _) `mappend` _ = m
+--Здесь тип a не обязательно должен быть моноидом.
+</code></pre></section><section><h4>Класс Alternative</h4><pre><code class="hs">class Applicative f => Alternative f where
+  empty :: f a -- вычисления с нулевым результатом
+  (<|>) :: f a -> f a -> f a -- комбинация двух вычислений
+
+--примеры
+instance Alternative Maybe where
+  empty               = Nothing
+  Nothing <|> Nothing = Nothing
+  Just x  <|> Nothing = Just x
+  Nothing <|> Just x  = Just x
+  Just x  <|> Just y  = Just x 
+                                
+instance Alternative [] where
+  empty = []
+  (<|>) = (++)
+</code></pre></section><section><h4>Класс Alternative и MonadPlus:</h4><pre><code class="hs">class Monad m => MonadPlus m where
+  mzero :: m a
+  mplus :: m a -> m a -> m a</code></pre><p>MonadPlus - Alternative для монад. Появился в языке раньше Alternative.</p><p>Относительно MoandPlus существуют некоторые дополнительные ожидания, как её методы будут взаимодействовать с монадой, поэтому утверждение, что что-то есть MonadPlus более сильное, чем утверждение, что это одновременно Alternative и Monad.
+</p></section><section> <h4>Законы Altarnative и MonadPlus</h4><pre><code class="hs">--Общего набора законов для этих классов 
+-- типов не существует, 
+-- однако применяется минимум правил, 
+-- выполнение которых делает из Alternative моноид:
+empty <|> u  =  u
+u <|> empty  =  u
+-- (<|>) is associative
+u <|> (v <|> w)  =  (u <|> v) <|> w
+</code></pre><pre><code class="hs">-- Аналогичные правила будут и для MonadPlus:
+mzero `mplus` m  =  m
+m `mplus` mzero  =  m
+m `mplus` (n `mplus` o)  =  (m `mplus` n) `mplus` o
+-- Плюс два дополнительных правила для взаимодействия с монадой:
+mzero >>= f  =  mzero -- left zero
+m >> mzero   =  mzero -- right zero
+</code></pre></section><section><h4>Применение Applicative, полезные функции</h4><pre><code class="hs">-- Общая задача при работе с 
+--альтернативой-взять список альтернативных значений, 
+--например [Maybe a] или [[a]], и свернуть его с помощью (<|>). 
+asum :: (Alternative f, Foldable t) => t (f a) -> f a
+asum = foldr (<|>) empty
+
+-- В случае MonadPlust
+msum :: (MonadPlus m, Foldable t) => t (m a) -> m a
+</code></pre></section><section><h4>Применение Applicative, полезные функции</h4><pre><code class="hs">-- Фильтер значений в do-expression
+guard :: Alternative m => Bool -> m ()
+guard True  = pure ()
+guard _ = empty
+</code></pre></section><section><h4>Применение Applicative, полезные функции</h4><pre><code class="hs">pythags = 
+  [ (x, y, z) | 
+    z <- [1..], 
+    x <- [1..z], 
+    y <- [x..z], x^2 + y^2 == z^2 
+  ] 
+pythags = do
+  z <- [1..]
+  x <- [1..z]
+  y <- [x..z]
+  guard (x^2 + y^2 == z^2)
+  return (x, y, z)
+</code></pre></section><section><h4>Применение Applicative, полезные функции</h4><pre><code class="hs">-- т.к. 
+mempty >>= f = mempty
+-- или эквивалентно
+empty >>= f = empty
+-- guard вернёт пустой результат, 
+-- если значение аргумента будет равно False
+</code></pre></section><section><h4>Обработка ошибок. Тип Either</h4><pre><code class="hs">data Either a b = Left a | Right b
+
+-- Either - это монада
+instance Monad (Either a) where 
+  return x = Right x
+  x@(Left _) >>= _ = x
+  (Right x) >>= f = f x
+</code></pre></section><section><section><h4>Тип Either</h4><p>Задание: реализовать для Either Applicative и Functor</p><pre><code class="hs">instance Functor (Either a b) where
+  -- fmap :: (b -> c) -> Either a b -> Either a c
+  fmap = ???
+
+instance Applicative (Either a) where
+  -- pure :: b -> Either a b
+  pure = ???
+  -- <*> :: Either a (b -> c) -> Either a b -> Either a c
+  (<*>) = ???
+</code></pre></section></section><section> <h4>Обработка ошибок. Монада Except</h4><p>Вычисления, допускающие исключения</p><pre><code class="hs">newtype Except e a = Except {runExcept :: Either e a}
+
+except :: Either e a -> Except e a
+except = Except
+
+instance Monad (Except e) where
+  return a = Except $ Right a
+  m >>= k = case runExcept m of
+  Left e -> Except $ Left e
+  Right x -> k x
+</code></pre></section><section><h4>Обработка ошибок. Монада Except</h4><pre><code class="hs">throwE :: e -> Except e a
+throwE = except . Left
+
+catchE :: Except e a -> (e -> Except e' a)
+                           -> Except e' a
+m `catchE` h = case runExcept m of
+                  Left l -> h l
+                  Right r -> Except $ Right r
+
+-- использование
+-- do { action1; action2; action3 } `catchE` handler
+</code></pre></section><section><h4>Пример использования</h4><pre><code class="hs">data DivByError = ErrZero | Other String deriving (Eq,Show)
+(/?) :: Double -> Double -> Except DivByError Double
+_ /? 0 = throwE ErrZero
+x /? y = return $ x / y
+
+example0 :: Double -> Double -> Except DivByError String
+example0 x y = action `catchE` handler where
+  action = do q <- x /? y
+              return $ show q
+  handler = return . show
+</code></pre></section><section><h4>Обработка ошибок. Расширение функциональности.</h4><pre><code class="hs">instance Monoid e => MonadPlus (Except e) where
+mzero = Except $ Left mempty
+Except x `mplus` Except y = Except $
+case x of
+Left e -> either (Left . mappend e) Right y
+r -> r
+
+-- mzero — ошибка по умолчанию для guard, задается mempty;
+-- mplus — накапливает ошибки слева направо, но если 
+-- происходит удачная попытка, то возвращает удачу.
+</code></pre></section><section><h4>Обработка ошибок. Расширение функциональности.</h4><pre><code class="hs">mempty = Other ""
+Other s1 `mappend` Other s2 = Other $ s1 ++ s2
+Other s1 `mappend` ErrZero = Other $ s1 ++ "zero;"
+ErrZero `mappend` Other s2 = Other $ "zero;" ++ s2
+ErrZero `mappend` ErrZero = Other $ "zero;zero"
+
+example2 :: Double -> Double -> Except DivByError String
+example2 x y = action `catchE` handler where
+  action = do
+    q <- x /? y
+    guard $ y >= 0
+    return $ show q
+  handler = return . show
+</code></pre></section><section> <h4>Расширения языка: Мультипараметрические классы типов</h4><pre><code class="hs">{-# LANGUAGE MultiParamTypeClasses #-}
+</code></pre><p>Позволяет определять классы типов с несколькими типовыми параметрами.</p><p>Если класс типов с одним параметром определяет коллекцию типов, то мультипараметрические классы типов задают отношение между типами.
+</p></section><section> <h4>Расширения языка: Мультипараметрические классы типов. А зачем? </h4><pre><code class="hs">data Vector = Vector Int Int
+data Matrix = Matrix Vector Vector
+-- Хотим реализовать основные операции: сложение, умножение, вычитание и т.д.
+
+-- Попробуем сделать Vector и Matrix экземплярами класса типов Num
+instance Num Vector where
+  Vector a1 b1 + Vector a2 b2 = Vector (a1+a2) (b1+b2)
+  Vector a1 b1 - Vector a2 b2 = Vector (a1-a2) (b1-b2)
+  {- ... and so on ... -}
+
+instance Num Matrix where
+  Matrix a1 b1 + Matrix a2 b2 = Matrix (a1+a2) (b1+b2)
+  Matrix a1 b1 - Matrix a2 b2 = Matrix (a1-a2) (b1-b2)
+  {- ... and so on ... -}
+</code></pre></section><section> <h4>Расширения языка: Мультипараметрические классы типов. Проблемы... </h4><pre><code class="hs">-- Как реализовать умножение?
+(*) :: Matrix -> Matrix -> Matrix
+(*) :: Matrix -> Vector -> Vector
+(*) :: Matrix -> Int -> Matrix
+(*) :: Int -> Matrix -> Matrix
+</code></pre></section><section><h4>Расширения языка: Мультипараметрические классы типов спешат на помощь</h4><pre><code class="hs">{-# LANGUAGE MultiParamTypeClasses #-}
+
+class Mult a b c where
+  (***) :: a -> b -> c
+
+instance Mult Matrix Matrix Matrix where
+{- ... -}
+instance Mult Matrix Vector Vector where
+{- ... -}
+instance Mult Matrix Int Matrix where
+{- ... -}
+instance Mult Int Matrix Matrix where
+{- ... -}
+...
+</code></pre></section><section><h4>Расширения языка: Мультипараметрические классы типов. Ну шо опять не так???</h4><p>Слишком много свободы. Слишком полиморфно. </p><pre><code class="hs">let a = Matrix (Vector 1 2) (Vector 3 4)
+let i = Matrix (Vector 1 0) (Vector 0 1)
+
+a *** i
+-- No instance for (Mult Matrix Matrix c) arising from
+-- a use of `***'
+-- The type variable `c' is ambiguous
+
+-- А так работает!
+(a *** i) :: Matrix
+-- Matrix (Vector 1 2) (Vector 3 4)</code></pre><p>На самом деле типовая переменная c не является свободной. Её значение определяется типами перемножаемых аргументов. Но компилятор об этом не знает. Пока.
+</p></section><section><h4>Расширения языка: Функциональная зависимость. Фундепс.ч</h4><pre><code class="hs">{-# LANGUAGE FunctionalDependencies #-}
+
+class Mult a b c | a b -> c where
+(*) :: a -> b -> c</code></pre><p>Это означает, что тип c имеет уникальное значение, которое определяется значениями a и b.
+</p></section><section><h4>Трансформеры монад</h4><p>Монадные трансформеры: специальные типы, которые позволяют нам комбинировать две монады в одной, но разделяющие поведение обеих.</p><pre><code class="hs">-- Пример Maybe + IO
+type IOMaybe a =  IO (Maybe a)
+
+returnIOM :: a -> IOMaybe a
+returnIOM = return . Just
+
+bindION :: IOMaybe a -> (a -> IOMaybe b) -> IOMaybe b
+bindION iom f = do
+  maybe_val <- iom
+  case maybe_val of
+    Nothing -> return Nothing
+    (Just v) -> f v
+
+(>>>=) = bindIOM
+liftIOM :: IO a -> IOMaybe a
+liftIOM io = io >>= returnIOM
+</code></pre></section><section><h4>Трансформеры монад</h4><p>Пример использования IOMaybe. Провекра ввода имени.</p><pre><code class="hs">checkInput :: String -> Bool
+checkInput [] = False
+checkInput (x: _) = isUpper x
+
+getName :: IOMaybe String
+getName = do
+  input <- getLine
+  if checkInput input
+  then returnIOM input
+  else return Nothing
+
+example = putStr "Please enter your name: "
+          >> getName
+          >>>= (\s -> liftIOM $ putStrLn $
+                      "Your name is " ++ s) 
+</code></pre></section><section><h4>Трансформеры монад</h4><p>Как быть если нужно объединить действие других монад, например Maybe + List или List + IO и т.д.</p><p>Трансформер монад — конструктор типа, который принимает монаду в качестве параметра и возвращает монаду как результат.</p><p>Требования</p><ul><li>Сорт монады m :: * -> *, поэтому сорт трансформера должен быть t : (* -> *) -> * -> *</li><li>Результат применения t к монаде m должен быть монадой. Не надо забывать про законы монад</li><li>Функция lift :: m a -> t m a, которая получает на вход значение из трансформируемой монады и поднимает его в трансформированную.</li></ul><p>Трансформеры монад реализованы в библиотеке, которая называется mlt. Данная реализация позволяет опускать использование lift и использовать явно только в неоднозначных ситуациях.
+</p></section><section><h4>Трансформеры монад</h4><pre><code class="hs">newtype MaybeT m a = MaybeT {runMaybeT :: m (Maybe a)}
+-- MaybeT :: m (Maybe a) -> MaybeT m a
+-- runMaybeT :: MaybeT m a -> m (Maybe a)
+
+instance (Monad m) => Monad (MaybeT m) where
+  -- return :: a -> MaybeT m a
+  return = MaybeT . return . Just
+
+  (>>=) :: MaybeT m a -> (a -> MaybeT m b) -> MaybeT m b
+  x >>= f = MaybeT $ do 
+    v <- runMaybeT x
+    case v of 
+      Nothing -> return Nothing
+      Just y  -> runMaybeT (f y)
+
+instance MonadTrans MaybeT where
+  -- lift :: m a -> MaybeT m a
+  lift = MaybeT . liftM Just
+
+  -- liftM :: (Monad m) => (a -> r) -> m a -> m r 
+  -- то же, что и fold, но для monad
+</code></pre></section><section><h4>Трансформеры монад</h4><pre><code class="hs">class MonadTrans t where
+  lift :: (Monad m) => m a -> t m a</code></pre><p>Законы функции lift</p><pre><code class="hs">lift . return = return -- правый ноль
+lift (m >>= k) = lift m >>= (lift . k)
+</code></pre></section><section><h4>Трансформеры монад. Метод fail</h4><pre><code class="hs">instance Monad m => MonadFail (MaybeT m) where
+  -- fail :: String -> MaybeT m a
+  fail _ = MaybeT $ return Nothing</code></pre><p>В более старых версиях Haskell метод fail входил в интерфейс класса типов Monad
+</p></section><section><h4>Трансформеры монад. Пример использования MaybeT</h4><pre><code class="hs">import Control.Monad.Trans.Maybe
+import Control.Monad.State
+mbSt :: MaybeT (State Integer) Integer
+mbSt = do
+  lift $ modify (+1)
+  a <- lift get
+  True <- return $ a >= 3 
+  -- чтобы использовать guard нужно реализовать MonadPlus для MaybeT
+  return a
+
+-- evalStateT (runMaybeT mbSt) 0
+-- Identity Nothing
+-- evalStateT (runMaybeT mbSt) 2
+-- Identity (Just 3) -- Indentity - ???
+-- runIdentity $ evalStateT (runMaybeT mbSt) 2
+-- Just 3
+</code></pre></section><section><h4>Трансофрмеры монда. MonadPlus.</h4><pre><code class="hs">instance Monad m => MonadPlus (MaybeT m) where
+  mzero = MaybeT $ return Nothing
+  
+  x `mplus` y = MaybeT $ do
+    v <- runMaybeT x
+    case v of Nothing -> runMaybeT y
+              Just _ -> return v
+  
+  --instance Monad m => Alternative (MaybeT m) where...
+  -- в современных версиях GHC
+</code></pre></section><section><h4>Трансофрмеры монда. Провекра ввода имени.</h4><pre><code class="hs">checkInput :: String -> Bool
+checkInput [] = False
+checkInput (x: _) = isUpper x
+
+getName :: MaybeT IO String
+getName = do 
+  input <- lift getLine
+  guard checkInput input
+  return input
+
+example = runMaybeT $ do 
+  lift $ putStr "Please enter yout name: "
+  name <- getName
+  lift $ putStrLn $ "Your name is " ++ name
+</code></pre></section><section><h4>Трансформермы монад. </h4><p>Для любой пары монад сущесвует способ избавиться от подъёма стандартных операций вложенной монада.</p><p>Делается это при помощи реализации интерфейса вложенной монады для трансформированной монада.</p><pre><code class="hs">-- Стандарный интерфейс монады State
+class Monad m => MonadState s m | m -> s where
+  get :: m s
+  put :: s -> m ()
+  state :: (s -> (a, s)) -> m a
+
+instance MonadState s m => MonadState s (MaybeT m) where
+  get = lift get
+  put = lift . put
+</code></pre></section><section><h4>Трансформермы монад. </h4><pre><code class="hs">mbSt'' :: MaybeT (State Integer) Integer
+mbSt'' = do
+modify (+1) -- без lift
+a <- get -- без lift
+guard $ a >= 3
+return a
+
+-- runIdentity $ evalStateT (runMaybeT mbSt'') 2
+-- Just 3
+</code></pre></section><section><h4>Трансформермы монад. Стандартные трансформеры</h4><table><tbody><tr><td>Монада</td><td>Трансформер</td><td>Исходный тип  </td><td>Тип трансформера</td></tr><tr><td>Reader </td><td>ReaderT </td><td>r -> a </td><td>r -> m a</td></tr><tr> <td>Writer</td><td>WriterT</td><td>(a,w)</td><td>m (a,w)</td></tr><tr><td>State</td><td>StateT</td><td>s -> (a,s)</td><td>s -> m (a,s)</td></tr><tr><td>Except</td><td>ExceptT</td><td>Either e a m</td><td>(Either e a)</td></tr><tr><td>Cont</td><td>ContT</td><td>(a -> r) -> r</td><td>(a -> m r) -> m r</td></tr></tbody></table></section><section><p>При этом первый столбец определяется через второй:</p><pre><code class="hs">type Reader r = ReaderT r Identity
+type Writer w = WriterT w Identity
+type State s = StateT s Identity
+type Except e = ExceptT e Identity
+type Cont r = ContT r Identity</code></pre></section>
+    </div>
+</div>
+
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+    Reveal.initialize({history:true,dependencies:[{src:'reveal.js/plugin/markdown/marked.js'},{src:'reveal.js/plugin/markdown/markdown.js'},{src:'reveal.js/plugin/notes/notes.js',async:true},{src:'reveal.js/plugin/highlight/highlight.js',async:true,callback:function() { hljs.initHighlightingOnLoad(); }}],mouseWheel:true});
+</script>
+</body>
+</html>
