@@ -4,7 +4,7 @@ module Fun where
   newtype Fun a b = Fun {getFun :: a -> b}
 
   instance Functor (Fun a) where
-    fmap f (Fun a) = Fun (\x -> f (a x))
+    fmap f (Fun a) = Fun (f . a)
 
   instance Applicative (Fun a) where
     pure a = Fun (\_ -> a)
