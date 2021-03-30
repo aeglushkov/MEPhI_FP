@@ -4,6 +4,7 @@
 .vscode/*
 *.doc
 *.docx
+*.7z
 # !.vscode/settings.json
 # !.vscode/tasks.json
 # !.vscode/launch.json
